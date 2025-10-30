@@ -1,0 +1,7 @@
+{
+  "name": "Echo Lingua AI",
+  "description": "An interactive AI conversation partner to practice and improve your language skills in real-time. Perfect for interview preparation, English communication, and fluency development.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
