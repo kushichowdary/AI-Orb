@@ -1,8 +1,13 @@
 # JARVIS - AI Language Coach
+<img src="https://github.com/user-attachments/assets/fec11c27-9454-4671-bd05-d499fb98707f" alt="Alt text" width="1766" height="842">
+
+---
 
 JARVIS is your personal AI conversation partner designed to help you master new languages and enhance your English communication skills. Engage in fluid, real-time spoken conversations to build fluency, practice for interviews, or simply become a more confident speaker.
 
 This application provides a seamless voice-first experience, allowing you to converse naturally with an AI that understands and responds in real-time.
+
+---
 
 ## Features
 
