@@ -1,113 +1,42 @@
 import React, { useRef, useEffect, useCallback } from 'react';
-import { ConnectionState } from '../types';
 
-interface BubbleVisualizerProps {
-  connectionState: ConnectionState;
-  isSpeaking: boolean;
-}
-
-class Bubble {
-    x: number;
-    y: number;
-    r: number;
-    vx: number;
-    vy: number;
+export const BubbleVisualizer: React.FC = () => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     
-    constructor(width: number, height: number) {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.r = Math.random() * 50 + 20;
-        this.vx = (Math.random() - 0.5) * 0.5;
-        this.vy = (Math.random() - 0.5) * 0.5;
-    }
-    
-    update(width: number, height: number, speedFactor: number) {
-        this.x += this.vx * speedFactor;
-        this.y += this.vy * speedFactor;
+    const drawBackground = useCallback(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext('2d');
+        if (!ctx || !canvas) {
+            return;
+        }
         
-        if (this.x > width + this.r) this.x = -this.r;
-        if (this.x < -this.r) this.x = width + this.r;
-        if (this.y > height + this.r) this.y = -this.r;
-        if (this.y < -this.r) this.y = height + this.r;
-    }
-}
-
-export const BubbleVisualizer: React.FC<BubbleVisualizerProps> = ({ connectionState, isSpeaking }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  // FIX: Initialize useRef with null to prevent type error.
-  const animationFrameId = useRef<number | null>(null);
-  const bubbles = useRef<Bubble[]>([]);
-  // FIX: Use a ref to hold the canvas context to avoid passing it as an argument in the animation loop.
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-
-  const getSpeedFactor = useCallback(() => {
-    if (isSpeaking) return 2.5;
-    if (connectionState === ConnectionState.CONNECTED) return 1;
-    if (connectionState === ConnectionState.CONNECTING) return 0.5;
-    return 0.2;
-  }, [connectionState, isSpeaking]);
-
-
-  const animate = useCallback(() => {
-    const ctx = ctxRef.current;
-    if (!ctx) {
-        animationFrameId.current = requestAnimationFrame(animate);
-        return;
-    };
-    const { width, height } = ctx.canvas;
-    ctx.clearRect(0, 0, width, height);
+        const { width, height } = canvas;
+        
+        // Dark, simple background
+        const bgGradient = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) / 1.5);
+        bgGradient.addColorStop(0, '#101018'); // Dark purplish grey
+        bgGradient.addColorStop(1, '#050508'); // Near black
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, width, height);
+    }, []);
     
-    // Metaball effect setup
-    ctx.filter = 'blur(30px) contrast(20)';
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-    bubbles.current.forEach(bubble => {
-      ctx.beginPath();
-      const gradient = ctx.createRadialGradient(bubble.x, bubble.y, 0, bubble.x, bubble.y, bubble.r);
-      gradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
-      gradient.addColorStop(1, 'rgba(0, 100, 255, 0)');
-      ctx.fillStyle = gradient;
-      ctx.arc(bubble.x, bubble.y, bubble.r, 0, Math.PI * 2);
-      ctx.fill();
-    });
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawBackground(); 
+        };
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        return () => {
+            window.removeEventListener('resize', resizeCanvas);
+        };
+    }, [drawBackground]);
     
-    // Reset filter for next frame logic
-    ctx.filter = 'none';
-
-    bubbles.current.forEach(bubble => bubble.update(width, height, getSpeedFactor()));
-
-    animationFrameId.current = requestAnimationFrame(animate);
-  }, [getSpeedFactor]);
-
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // FIX: Store the context in a ref.
-    ctxRef.current = canvas.getContext('2d');
-    if (!ctxRef.current) return;
-
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      
-      const numBubbles = Math.floor((canvas.width * canvas.height) / 40000);
-      bubbles.current = Array.from({ length: numBubbles }, () => new Bubble(canvas.width, canvas.height));
-    };
-    
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // FIX: Pass the animate function directly to requestAnimationFrame.
-    animationFrameId.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
-      window.removeEventListener('resize', resizeCanvas);
-    };
-  }, [animate]);
-
-  return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full z-0" />;
+    return <canvas ref={canvasRef} className="fixed top-0 left-0 w-full h-full z-0" />;
 };
