@@ -106,28 +106,6 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         const floatX = centerX + Math.sin(time.current * 0.005) * 5;
         const floatY = centerY + Math.cos(time.current * 0.007) * 5;
 
-        // --- Frosted Glass Ring ---
-        ctx.save();
-        const ringOuterRadius = baseRadius * 1.6;
-        const ringInnerRadius = baseRadius * 1.1;
-        
-        const ringPath = new Path2D();
-        ringPath.arc(floatX, floatY, ringOuterRadius, 0, Math.PI * 2, false);
-        ringPath.arc(floatX, floatY, ringInnerRadius, 0, Math.PI * 2, true);
-        
-        // Clip to the ring shape
-        ctx.clip(ringPath);
-        
-        // Apply a blur filter
-        ctx.filter = 'blur(25px)';
-        
-        // Fill the clipped area with a semi-transparent color to create the frosted effect
-        ctx.fillStyle = 'rgba(220, 210, 255, 0.1)';
-        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
-        
-        // Restore context to remove clip and filter
-        ctx.restore();
-
         // --- Create Morphing Path ---
         const segments = 128;
         const path = new Path2D();

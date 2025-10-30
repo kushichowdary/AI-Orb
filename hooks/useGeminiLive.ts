@@ -1,13 +1,13 @@
 import { useState, useRef, useCallback } from 'react';
 // FIX: Removed non-exported type `LiveSession`.
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from "@google/genai";
-import { ConnectionState, TranscriptEntry } from '../types';
+import { ConnectionState } from '../types';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
 
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
 
-export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[]) => void) => {
+export const useGeminiLive = () => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -22,9 +22,6 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
   const speakingTimeoutRef = useRef<number | null>(null);
   const userSpeakingTimeoutRef = useRef<number | null>(null);
 
-  const currentInputTranscriptionRef = useRef('');
-  const currentOutputTranscriptionRef = useRef('');
-  
   const audioPlaybackStateRef = useRef({
     nextStartTime: 0,
     sources: new Set<AudioBufferSourceNode>(),
@@ -79,8 +76,6 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
 
     setConnectionState(ConnectionState.CONNECTING);
     setError(null);
-    currentInputTranscriptionRef.current = '';
-    currentOutputTranscriptionRef.current = '';
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -98,8 +93,6 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
           },
-          inputAudioTranscription: {},
-          outputAudioTranscription: {},
           systemInstruction: 'You are a friendly and helpful language learning partner. Your goal is to help me practice my English speaking skills. Feel free to correct my mistakes gently and ask engaging questions. Keep your responses concise and natural.'
         },
         callbacks: {
@@ -148,28 +141,6 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
             scriptProcessor.connect(inputAudioContextRef.current!.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
-            if (message.serverContent?.inputTranscription) {
-              currentInputTranscriptionRef.current += message.serverContent.inputTranscription.text;
-            }
-            if (message.serverContent?.outputTranscription) {
-              currentOutputTranscriptionRef.current += message.serverContent.outputTranscription.text;
-            }
-
-            if (message.serverContent?.turnComplete) {
-                const newEntries: TranscriptEntry[] = [];
-                if(currentInputTranscriptionRef.current.trim()){
-                    newEntries.push({ speaker: 'user', text: currentInputTranscriptionRef.current.trim() });
-                }
-                if(currentOutputTranscriptionRef.current.trim()){
-                    newEntries.push({ speaker: 'ai', text: currentOutputTranscriptionRef.current.trim() });
-                }
-                if(onTranscriptUpdate && newEntries.length > 0) {
-                    onTranscriptUpdate(newEntries);
-                }
-                currentInputTranscriptionRef.current = '';
-                currentOutputTranscriptionRef.current = '';
-            }
-
             if (message.serverContent?.interrupted) {
               audioPlaybackStateRef.current.sources.forEach(source => source.stop());
               audioPlaybackStateRef.current.sources.clear();
@@ -227,7 +198,7 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
       setConnectionState(ConnectionState.ERROR);
       stopSession();
     }
-  }, [connectionState, stopSession, onTranscriptUpdate]);
+  }, [connectionState, stopSession]);
   
   return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
 };

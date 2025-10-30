@@ -1,14 +1,11 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { InteractiveOrb } from './components/InteractiveOrb';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import { ConnectionState } from './types';
 import { BubbleVisualizer as GridBackground } from './components/BubbleVisualizer';
 
 const App: React.FC = () => {
-  // Transcript updates are no longer displayed in the UI.
-  const onTranscriptUpdate = useCallback(() => {}, []);
-
-  const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive(onTranscriptUpdate);
+  const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive();
 
   const handleStartSession = () => {
     const isIdle = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.ERROR;
