@@ -34,8 +34,11 @@ class Bubble {
 
 export const BubbleVisualizer: React.FC<BubbleVisualizerProps> = ({ connectionState, isSpeaking }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameId = useRef<number>();
+  // FIX: Initialize useRef with null to prevent type error.
+  const animationFrameId = useRef<number | null>(null);
   const bubbles = useRef<Bubble[]>([]);
+  // FIX: Use a ref to hold the canvas context to avoid passing it as an argument in the animation loop.
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
   const getSpeedFactor = useCallback(() => {
     if (isSpeaking) return 2.5;
@@ -45,7 +48,12 @@ export const BubbleVisualizer: React.FC<BubbleVisualizerProps> = ({ connectionSt
   }, [connectionState, isSpeaking]);
 
 
-  const animate = useCallback((ctx: CanvasRenderingContext2D) => {
+  const animate = useCallback(() => {
+    const ctx = ctxRef.current;
+    if (!ctx) {
+        animationFrameId.current = requestAnimationFrame(animate);
+        return;
+    };
     const { width, height } = ctx.canvas;
     ctx.clearRect(0, 0, width, height);
     
@@ -67,7 +75,7 @@ export const BubbleVisualizer: React.FC<BubbleVisualizerProps> = ({ connectionSt
 
     bubbles.current.forEach(bubble => bubble.update(width, height, getSpeedFactor()));
 
-    animationFrameId.current = requestAnimationFrame(() => animate(ctx));
+    animationFrameId.current = requestAnimationFrame(animate);
   }, [getSpeedFactor]);
 
 
@@ -75,8 +83,9 @@ export const BubbleVisualizer: React.FC<BubbleVisualizerProps> = ({ connectionSt
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // FIX: Store the context in a ref.
+    ctxRef.current = canvas.getContext('2d');
+    if (!ctxRef.current) return;
 
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
@@ -89,7 +98,8 @@ export const BubbleVisualizer: React.FC<BubbleVisualizerProps> = ({ connectionSt
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    animationFrameId.current = requestAnimationFrame(() => animate(ctx));
+    // FIX: Pass the animate function directly to requestAnimationFrame.
+    animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationFrameId.current) {

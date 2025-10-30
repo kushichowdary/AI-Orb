@@ -11,6 +11,7 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
 
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -19,6 +20,7 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const speakingTimeoutRef = useRef<number | null>(null);
+  const userSpeakingTimeoutRef = useRef<number | null>(null);
 
   const currentInputTranscriptionRef = useRef('');
   const currentOutputTranscriptionRef = useRef('');
@@ -63,7 +65,11 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
     if (speakingTimeoutRef.current) {
       clearTimeout(speakingTimeoutRef.current);
     }
+     if (userSpeakingTimeoutRef.current) {
+      clearTimeout(userSpeakingTimeoutRef.current);
+    }
     setIsSpeaking(false);
+    setIsUserSpeaking(false);
     
     setConnectionState(ConnectionState.DISCONNECTED);
   }, []);
@@ -108,6 +114,23 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
 
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
+
+              // User speaking detection
+              let sum = 0.0;
+              for (let i = 0; i < inputData.length; ++i) {
+                sum += inputData[i] * inputData[i];
+              }
+              const rms = Math.sqrt(sum / inputData.length);
+              if (rms > 0.02) { // Threshold for speech detection
+                setIsUserSpeaking(true);
+                if (userSpeakingTimeoutRef.current) {
+                  clearTimeout(userSpeakingTimeoutRef.current);
+                }
+                userSpeakingTimeoutRef.current = window.setTimeout(() => {
+                  setIsUserSpeaking(false);
+                }, 500); // Reset after 500ms of silence
+              }
+              
               const l = inputData.length;
               const int16 = new Int16Array(l);
               for (let i = 0; i < l; i++) {
@@ -206,5 +229,5 @@ export const useGeminiLive = (onTranscriptUpdate?: (newEntries: TranscriptEntry[
     }
   }, [connectionState, stopSession, onTranscriptUpdate]);
   
-  return { connectionState, startSession, stopSession, error, isSpeaking };
+  return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
 };

@@ -1,5 +1,5 @@
 {
-  "name": "Echo Lingua AI",
+  "name": "JARVIS",
   "description": "An interactive AI conversation partner to practice and improve your language skills in real-time. Perfect for interview preparation, English communication, and fluency development.",
   "requestFramePermissions": [
     "microphone"

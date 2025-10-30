@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { InteractiveOrb } from './components/InteractiveOrb';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import { ConnectionState } from './types';
@@ -6,9 +6,8 @@ import { ConnectionState } from './types';
 const App: React.FC = () => {
   // Transcript updates are no longer displayed in the UI.
   const onTranscriptUpdate = useCallback(() => {}, []);
-  const [showApiMessage, setShowApiMessage] = useState(true);
 
-  const { connectionState, startSession, stopSession, error, isSpeaking } = useGeminiLive(onTranscriptUpdate);
+  const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive(onTranscriptUpdate);
 
   const handleStartSession = () => {
     const isIdle = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.ERROR;
@@ -21,25 +20,12 @@ const App: React.FC = () => {
 
   return (
     <main className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0c0a1a] relative overflow-hidden p-4">
-      {showApiMessage && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-cyan-900/50 border border-cyan-400/30 text-cyan-200 text-center p-3 rounded-lg shadow-lg text-sm z-20">
-          <strong>Note:</strong> Your API key is managed securely via an environment variable. You do not need to enter it here.
-          <button 
-            onClick={() => setShowApiMessage(false)} 
-            className="absolute top-1 right-2 text-cyan-400 hover:text-white transition-colors"
-            aria-label="Dismiss message"
-          >
-            &times;
-          </button>
-        </div>
-      )}
-
       <div className="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center">
         {/* Animated Gradient Ring */}
         <div
           className={`
             absolute inset-[-3px] rounded-full bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500
-            transition-opacity duration-500
+            transition-opacity duration-500 blur-lg
             ${isSessionActive ? 'opacity-70 animate-[rotate_4s_linear_infinite]' : 'opacity-30'}
           `}
         />
@@ -51,6 +37,7 @@ const App: React.FC = () => {
             <InteractiveOrb
               connectionState={connectionState}
               isSpeaking={isSpeaking}
+              isUserSpeaking={isUserSpeaking}
               onClick={handleStartSession}
               disabled={isSessionActive}
             />
