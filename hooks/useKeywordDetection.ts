@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
+
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 interface KeywordDetectionOptions {
   keywords: string[];
@@ -59,7 +60,9 @@ export const useKeywordDetection = ({
   enabled = true,
 }: KeywordDetectionOptions) => {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const isDeniedRef = useRef(false);
+
   // Use a ref for the callback to avoid re-running the effect when it changes
   const onKeywordDetectedRef = useRef(onKeywordDetected);
   onKeywordDetectedRef.current = onKeywordDetected;
@@ -85,11 +88,12 @@ export const useKeywordDetection = ({
   }, []);
 
   useEffect(() => {
-    if (!enabled || !isSpeechRecognitionSupported) {
+    if (!enabled || !isSpeechRecognitionSupported || permissionDenied) {
       if (recognitionRef.current) stopListening();
       return;
     }
 
+    isDeniedRef.current = false;
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
     
@@ -107,7 +111,11 @@ export const useKeywordDetection = ({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (event.error !== 'aborted') {
+      if (event.error === 'not-allowed') {
+        console.error('SpeechRecognition permission denied. Keyword detection is disabled.');
+        isDeniedRef.current = true;
+        setPermissionDenied(true);
+      } else if (event.error !== 'aborted') {
           console.error('SpeechRecognition error:', event.error);
       }
     };
@@ -115,7 +123,7 @@ export const useKeywordDetection = ({
     recognition.onend = () => {
       // The service may stop due to silence or other reasons.
       // We restart it as long as the component intends for it to be enabled.
-      if (enabled) {
+      if (enabled && !isDeniedRef.current) {
         startListening();
       }
     };
@@ -127,6 +135,7 @@ export const useKeywordDetection = ({
       stopListening();
       recognitionRef.current = null;
     };
-  }, [enabled, keywords, startListening, stopListening]);
+  }, [enabled, keywords, startListening, stopListening, permissionDenied]);
 
+  return { permissionDenied };
 };

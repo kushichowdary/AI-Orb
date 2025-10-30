@@ -1,6 +1,6 @@
 {
   "name": "JARVIS",
-  "description": "An interactive AI conversation partner to practice and improve your language skills in real-time. Perfect for interview preparation, English communication, and fluency development.",
+  "description": "Your personal AI conversation partner for learning new languages and improving your English. Practice real-time conversations to boost fluency, prepare for interviews, and develop stronger communication skills.",
   "requestFramePermissions": [
     "microphone"
   ]

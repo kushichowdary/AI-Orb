@@ -8,7 +8,17 @@ import { playConnectingSound, playConnectedSound, playErrorSound } from '../util
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
 
-export const useGeminiLive = (apiKey: string | null) => {
+const createSystemInstruction = (language: string): string => {
+    const baseInstruction = 'You are JARVIS, a female AI language coach. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words.';
+
+    if (language.toLowerCase() === 'english') {
+        return `${baseInstruction} Your goal is to help me practice my English speaking skills. Correct my mistakes gently and ask engaging questions.`;
+    } else {
+        return `${baseInstruction} The user has chosen to converse in ${language}. Please conduct the conversation primarily in ${language}. Your goal is to be a helpful and patient conversation partner in their chosen language.`;
+    }
+};
+
+export const useGeminiLive = (apiKey: string | null, language: string) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -95,9 +105,9 @@ export const useGeminiLive = (apiKey: string | null) => {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Fenrir' } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
-          systemInstruction: 'You are JARVIS, an AI language coach. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Your goal is to help me practice my English speaking skills. Correct my mistakes gently and ask engaging questions. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words.'
+          systemInstruction: createSystemInstruction(language),
         },
         callbacks: {
           onopen: () => {
@@ -205,7 +215,7 @@ export const useGeminiLive = (apiKey: string | null) => {
       setConnectionState(ConnectionState.ERROR);
       stopSession();
     }
-  }, [connectionState, stopSession, isSpeaking, apiKey]);
+  }, [apiKey, connectionState, language, stopSession]);
   
   return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
 };
