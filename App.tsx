@@ -1,16 +1,73 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { InteractiveOrb } from './components/InteractiveOrb';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import { ConnectionState } from './types';
 import { BubbleVisualizer as GridBackground } from './components/BubbleVisualizer';
 
+// Add type definition for AI Studio environment
+// Fix: Define an AIStudio interface to resolve the type conflict for `window.aistudio`.
+interface AIStudio {
+  hasSelectedApiKey: () => Promise<boolean>;
+  openSelectKey: () => Promise<void>;
+}
+
+declare global {
+  interface Window {
+    aistudio?: AIStudio;
+  }
+}
+
 const App: React.FC = () => {
   const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive();
+  const [isKeyReady, setIsKeyReady] = useState(false);
+  const [isCheckingKey, setIsCheckingKey] = useState(true);
 
-  const handleStartSession = () => {
+  useEffect(() => {
+    const checkApiKey = async () => {
+      setIsCheckingKey(true);
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setIsKeyReady(hasKey);
+      } else {
+        // If not in AI Studio, assume key is in process.env and proceed.
+        // The useGeminiLive hook will show an error if it's missing.
+        setIsKeyReady(true);
+      }
+      setIsCheckingKey(false);
+    };
+    checkApiKey();
+  }, []);
+
+  useEffect(() => {
+    // This handles cases where the key is missing or invalid, allowing the user to select a new one.
+    if (error && (error.includes('API Key must be set') || error.includes('API key not valid'))) {
+       setIsKeyReady(false);
+    }
+  }, [error]);
+
+
+  const handleOrbClick = async () => {
+    if (isCheckingKey) return;
+    
     const isIdle = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.ERROR;
-    if (isIdle) {
-      startSession();
+    if (!isIdle) return;
+
+    if (!isKeyReady) {
+      if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+        try {
+            await window.aistudio.openSelectKey();
+            setIsKeyReady(true); // Assume success to avoid race condition
+            startSession(); // Now attempt to start
+        } catch (e) {
+            console.error("Failed to open API key selection:", e);
+        }
+      } else {
+        // Fallback: let startSession fail and display the error
+        startSession();
+      }
+    } else {
+        startSession();
     }
   };
 
@@ -25,8 +82,8 @@ const App: React.FC = () => {
           connectionState={connectionState}
           isSpeaking={isSpeaking}
           isUserSpeaking={isUserSpeaking}
-          onClick={handleStartSession}
-          disabled={isSessionActive}
+          onClick={handleOrbClick}
+          disabled={isSessionActive || isCheckingKey}
         />
       </div>
 

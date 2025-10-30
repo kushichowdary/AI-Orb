@@ -18,7 +18,6 @@ export const useGeminiLive = () => {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const speakingTimeoutRef = useRef<number | null>(null);
   const userSpeakingTimeoutRef = useRef<number | null>(null);
 
   const audioPlaybackStateRef = useRef({
@@ -28,7 +27,7 @@ export const useGeminiLive = () => {
 
   const stopSession = useCallback(() => {
     if (sessionPromiseRef.current) {
-        sessionPromiseRef.current.then(session => session.close());
+        sessionPromiseRef.current.then(session => session.close()).catch(console.error);
         sessionPromiseRef.current = null;
     }
 
@@ -48,19 +47,16 @@ export const useGeminiLive = () => {
     }
 
     if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-      inputAudioContextRef.current.close();
+      inputAudioContextRef.current.close().catch(console.error);
     }
     if (outputAudioContextRef.current && outputAudioContextRef.current.state !== 'closed') {
-      outputAudioContextRef.current.close();
+      outputAudioContextRef.current.close().catch(console.error);
     }
     
     audioPlaybackStateRef.current.sources.forEach(source => source.stop());
     audioPlaybackStateRef.current.sources.clear();
     audioPlaybackStateRef.current.nextStartTime = 0;
 
-    if (speakingTimeoutRef.current) {
-      clearTimeout(speakingTimeoutRef.current);
-    }
      if (userSpeakingTimeoutRef.current) {
       clearTimeout(userSpeakingTimeoutRef.current);
     }
@@ -144,16 +140,12 @@ export const useGeminiLive = () => {
               audioPlaybackStateRef.current.sources.forEach(source => source.stop());
               audioPlaybackStateRef.current.sources.clear();
               audioPlaybackStateRef.current.nextStartTime = 0;
-              if (speakingTimeoutRef.current) clearTimeout(speakingTimeoutRef.current);
               setIsSpeaking(false);
             }
 
             const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (audioData) {
-              setIsSpeaking(true);
-              if (speakingTimeoutRef.current) {
-                clearTimeout(speakingTimeoutRef.current);
-              }
+              if (!isSpeaking) setIsSpeaking(true);
 
               const audioCtx = outputAudioContextRef.current!;
               const { sources } = audioPlaybackStateRef.current;
@@ -167,12 +159,9 @@ export const useGeminiLive = () => {
               
               source.onended = () => {
                 sources.delete(source);
-                if (speakingTimeoutRef.current) clearTimeout(speakingTimeoutRef.current);
-                speakingTimeoutRef.current = window.setTimeout(() => {
-                    if (audioPlaybackStateRef.current.sources.size === 0) {
-                        setIsSpeaking(false);
-                    }
-                }, 200); // Grace period for next audio chunk
+                if (sources.size === 0) {
+                    setIsSpeaking(false);
+                }
               };
 
               source.start(nextStartTime);
@@ -202,7 +191,7 @@ export const useGeminiLive = () => {
       setConnectionState(ConnectionState.ERROR);
       stopSession();
     }
-  }, [connectionState, stopSession]);
+  }, [connectionState, stopSession, isSpeaking]);
   
   return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
 };
