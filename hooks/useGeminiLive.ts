@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-// FIX: Removed non-exported type `LiveSession`.
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from "@google/genai";
 import { ConnectionState } from '../types';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
@@ -72,7 +71,7 @@ export const useGeminiLive = () => {
   }, []);
 
   const startSession = useCallback(async () => {
-    if (connectionState !== ConnectionState.DISCONNECTED) return;
+    if (connectionState !== ConnectionState.DISCONNECTED && connectionState !== ConnectionState.ERROR) return;
 
     setConnectionState(ConnectionState.CONNECTING);
     setError(null);
@@ -84,7 +83,7 @@ export const useGeminiLive = () => {
       inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
       
-      const ai = new GoogleGenAI({ apiKey: "skjdhkusd565417359151" });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
       sessionPromiseRef.current = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -127,10 +126,7 @@ export const useGeminiLive = () => {
               const l = inputData.length;
               const int16 = new Int16Array(l);
               for (let i = 0; i < l; i++) {
-                // The valid range for a 16-bit signed integer is -32768 to 32767.
-                // Multiplying by 32768 can result in 32768, which is out of range.
-                // Using 32767 ensures the value remains within the valid range.
-                int16[i] = inputData[i] * 32767;
+                int16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
               }
               const pcmBlob: Blob = {
                 data: encode(new Uint8Array(int16.buffer)),
@@ -148,6 +144,8 @@ export const useGeminiLive = () => {
               audioPlaybackStateRef.current.sources.forEach(source => source.stop());
               audioPlaybackStateRef.current.sources.clear();
               audioPlaybackStateRef.current.nextStartTime = 0;
+              if (speakingTimeoutRef.current) clearTimeout(speakingTimeoutRef.current);
+              setIsSpeaking(false);
             }
 
             const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
@@ -156,14 +154,11 @@ export const useGeminiLive = () => {
               if (speakingTimeoutRef.current) {
                 clearTimeout(speakingTimeoutRef.current);
               }
-              speakingTimeoutRef.current = window.setTimeout(() => {
-                setIsSpeaking(false);
-              }, 2000);
 
               const audioCtx = outputAudioContextRef.current!;
-              let { nextStartTime, sources } = audioPlaybackStateRef.current;
+              const { sources } = audioPlaybackStateRef.current;
               
-              nextStartTime = Math.max(nextStartTime, audioCtx.currentTime);
+              let nextStartTime = Math.max(audioPlaybackStateRef.current.nextStartTime, audioCtx.currentTime);
               
               const audioBuffer = await decodeAudioData(decode(audioData), audioCtx, OUTPUT_SAMPLE_RATE, 1);
               const source = audioCtx.createBufferSource();
@@ -172,6 +167,12 @@ export const useGeminiLive = () => {
               
               source.onended = () => {
                 sources.delete(source);
+                if (speakingTimeoutRef.current) clearTimeout(speakingTimeoutRef.current);
+                speakingTimeoutRef.current = window.setTimeout(() => {
+                    if (audioPlaybackStateRef.current.sources.size === 0) {
+                        setIsSpeaking(false);
+                    }
+                }, 200); // Grace period for next audio chunk
               };
 
               source.start(nextStartTime);
