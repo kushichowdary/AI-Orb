@@ -1,7 +1,9 @@
+
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from "@google/genai";
 import { ConnectionState } from '../types';
 import { encode, decode, decodeAudioData } from '../utils/audioUtils';
+import { playConnectingSound, playConnectedSound, playErrorSound } from '../utils/audioCues';
 
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
@@ -69,6 +71,7 @@ export const useGeminiLive = () => {
   const startSession = useCallback(async () => {
     if (connectionState !== ConnectionState.DISCONNECTED && connectionState !== ConnectionState.ERROR) return;
 
+    playConnectingSound();
     setConnectionState(ConnectionState.CONNECTING);
     setError(null);
 
@@ -86,12 +89,13 @@ export const useGeminiLive = () => {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
-          systemInstruction: 'You are a friendly and helpful language learning partner. Your goal is to help me practice my English speaking skills. Feel free to correct my mistakes gently and ask engaging questions. Keep your responses concise and natural.'
+          systemInstruction: 'You are an AI language coach. Your voice should be clear and calm. Your goal is to help me practice my English speaking skills. Correct my mistakes gently and ask engaging questions. Keep your responses concise, natural, and easy to understand.'
         },
         callbacks: {
           onopen: () => {
+            playConnectedSound();
             setConnectionState(ConnectionState.CONNECTED);
             
             const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
@@ -170,6 +174,7 @@ export const useGeminiLive = () => {
             }
           },
           onerror: (e: ErrorEvent) => {
+            playErrorSound();
             console.error('Gemini Live API Error:', e);
             setError(`Connection error. Please try again.`);
             setConnectionState(ConnectionState.ERROR);
@@ -181,6 +186,7 @@ export const useGeminiLive = () => {
         },
       });
     } catch (err) {
+      playErrorSound();
       console.error('Failed to start session:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       if (errorMessage.includes('Permission denied')) {

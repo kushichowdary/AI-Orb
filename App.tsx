@@ -4,6 +4,7 @@ import { InteractiveOrb } from './components/InteractiveOrb';
 import { useGeminiLive } from './hooks/useGeminiLive';
 import { ConnectionState } from './types';
 import { BubbleVisualizer as GridBackground } from './components/BubbleVisualizer';
+import { playStopSound } from './utils/audioCues';
 
 const App: React.FC = () => {
   const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive();
@@ -13,6 +14,11 @@ const App: React.FC = () => {
     if (isIdle) {
       startSession();
     }
+  };
+
+  const handleStopSession = () => {
+    playStopSound();
+    stopSession();
   };
 
   const isSessionActive = connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.CONNECTED;
@@ -33,7 +39,7 @@ const App: React.FC = () => {
 
       {isSessionActive && (
         <button
-          onClick={stopSession}
+          onClick={handleStopSession}
           aria-label="Stop Session"
           className="mt-10 bg-gray-800/50 text-gray-300 font-semibold px-8 py-3 rounded-full shadow-lg backdrop-blur-sm
                      border border-gray-700

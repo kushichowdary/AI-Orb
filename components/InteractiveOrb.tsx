@@ -121,6 +121,20 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         }
         path.closePath();
 
+        // --- AI Speaking Glow ---
+        if (isSpeaking) {
+            ctx.save();
+            // Pulsating alpha for a gentle "breathing" effect
+            const glowAlpha = 0.2 + Math.sin(time.current * 0.08) * 0.15;
+            ctx.globalAlpha = glowAlpha;
+            ctx.strokeStyle = `hsl(${HUE}, ${SATURATION + 30}%, 75%)`;
+            ctx.lineWidth = 20; // Width of the glow
+            ctx.filter = 'blur(25px)'; // Soft blur for a glow effect
+            ctx.stroke(path);
+            ctx.filter = 'none'; // Reset filter for subsequent drawings
+            ctx.restore();
+        }
+
         // --- Orb Core ---
         const orbGradient = ctx.createRadialGradient(
             floatX + baseRadius * 0.2, floatY - baseRadius * 0.2, baseRadius * 0.1, 
