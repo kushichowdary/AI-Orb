@@ -7,7 +7,9 @@ import { BubbleVisualizer as GridBackground } from './components/BubbleVisualize
 import { playStopSound } from './utils/audioCues';
 
 const App: React.FC = () => {
-  const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive();
+  // The API key is now provided via an environment variable for security.
+  // Ensure `process.env.API_KEY` is set in your deployment environment.
+  const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive(process.env.API_KEY || null);
 
   const handleOrbClick = () => {
     const isIdle = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.ERROR;

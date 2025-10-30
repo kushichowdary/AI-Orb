@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from "@google/genai";
 import { ConnectionState } from '../types';
@@ -7,7 +8,7 @@ import { playConnectingSound, playConnectedSound, playErrorSound } from '../util
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
 
-export const useGeminiLive = () => {
+export const useGeminiLive = (apiKey: string | null) => {
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [error, setError] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -70,6 +71,12 @@ export const useGeminiLive = () => {
   const startSession = useCallback(async () => {
     if (connectionState !== ConnectionState.DISCONNECTED && connectionState !== ConnectionState.ERROR) return;
 
+    if (!apiKey) {
+      setError("API Key is not set.");
+      setConnectionState(ConnectionState.ERROR);
+      return;
+    }
+
     playConnectingSound();
     setConnectionState(ConnectionState.CONNECTING);
     setError(null);
@@ -81,7 +88,7 @@ export const useGeminiLive = () => {
       inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
       
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
 
       sessionPromiseRef.current = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
@@ -188,7 +195,9 @@ export const useGeminiLive = () => {
       playErrorSound();
       console.error('Failed to start session:', err);
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
-      if (errorMessage.includes('Permission denied')) {
+      if (errorMessage.includes('API key not valid') || errorMessage.includes('invalid API key')) {
+        setError('API key is invalid.');
+      } else if (errorMessage.includes('Permission denied')) {
         setError('Microphone permission denied. Please enable it in your browser settings.');
       } else {
         setError(errorMessage);
@@ -196,7 +205,7 @@ export const useGeminiLive = () => {
       setConnectionState(ConnectionState.ERROR);
       stopSession();
     }
-  }, [connectionState, stopSession, isSpeaking]);
+  }, [connectionState, stopSession, isSpeaking, apiKey]);
   
   return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
 };
