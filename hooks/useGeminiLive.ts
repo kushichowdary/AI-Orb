@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from "@google/genai";
 import { ConnectionState } from '../types';
