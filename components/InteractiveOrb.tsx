@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useCallback } from 'react';
 import { ConnectionState } from '../types';
 
@@ -73,10 +74,10 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         const centerY = logicalHeight / 2;
         const baseRadius = Math.min(logicalWidth, logicalHeight) / 3.5;
 
-        // Dark Lavender color theme
-        const HUE = 270; 
-        const SATURATION = 45;
-        const LIGHTNESS = 60;
+        // Corresponds to #B8FB3C
+        const HUE = 79; 
+        const SATURATION = 96;
+        const LIGHTNESS = 61;
 
         let targetDistortion = 3, targetActivity = 0;
 
@@ -106,7 +107,6 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         const floatX = centerX + Math.sin(time.current * 0.005) * 5;
         const floatY = centerY + Math.cos(time.current * 0.007) * 5;
 
-        // --- Create Morphing Path ---
         const segments = 128;
         const path = new Path2D();
         for (let i = 0; i <= segments; i++) {
@@ -121,36 +121,44 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         }
         path.closePath();
 
-        // --- AI Speaking Glow ---
+        // AI Speaking Glow
         if (isSpeaking) {
             ctx.save();
-            // Pulsating alpha for a gentle "breathing" effect
-            const glowAlpha = 0.2 + Math.sin(time.current * 0.08) * 0.15;
+            const glowAlpha = 0.4 + Math.sin(time.current * 0.08) * 0.2;
             ctx.globalAlpha = glowAlpha;
-            ctx.strokeStyle = `hsl(${HUE}, ${SATURATION + 30}%, 75%)`;
-            ctx.lineWidth = 20; // Width of the glow
-            ctx.filter = 'blur(25px)'; // Soft blur for a glow effect
+            ctx.strokeStyle = `hsl(${HUE}, ${SATURATION}%, 75%)`;
+            ctx.lineWidth = 20;
+            ctx.filter = 'blur(25px)';
             ctx.stroke(path);
-            ctx.filter = 'none'; // Reset filter for subsequent drawings
+            ctx.filter = 'none';
             ctx.restore();
         }
 
-        // --- Orb Core ---
-        const orbGradient = ctx.createRadialGradient(
-            floatX + baseRadius * 0.2, floatY - baseRadius * 0.2, baseRadius * 0.1, 
-            floatX, floatY, baseRadius
-        );
-        orbGradient.addColorStop(0, `hsl(${HUE}, ${SATURATION}%, 95%)`);
-        orbGradient.addColorStop(0.5, `hsl(${HUE}, ${SATURATION}%, ${LIGHTNESS}%)`);
-        orbGradient.addColorStop(1, `hsl(${HUE}, ${SATURATION+10}%, ${LIGHTNESS-20}%)`);
-        ctx.fillStyle = orbGradient;
-        ctx.fill(path);
+        // User Speaking Pulse (transparent ripple)
+        if (isUserSpeaking) {
+            ctx.save();
+            const pulseCycle = 30;
+            const pulseProgress = (time.current % pulseCycle) / pulseCycle;
+            const pulseRadius = baseRadius * 0.8 * pulseProgress;
+            const pulseAlpha = 1.0 - pulseProgress;
+            
+            ctx.strokeStyle = `hsla(${HUE}, ${SATURATION}%, 80%, ${pulseAlpha * 0.7})`;
+            ctx.lineWidth = 1 + (2 * pulseProgress); // line gets thicker as it expands
+            ctx.beginPath();
+            ctx.arc(floatX, floatY, pulseRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+        
+        // Main Orb Outline
+        ctx.strokeStyle = `hsl(${HUE}, ${SATURATION}%, ${LIGHTNESS}%)`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke(path);
 
-        // --- Surface Nanotech Sheen ---
+        // Internal Arcs (no longer clipped)
         ctx.save();
-        ctx.clip(path);
-        ctx.globalCompositeOperation = 'overlay';
-        ctx.globalAlpha = 0.2 + s.activity * 0.3;
+        ctx.globalCompositeOperation = 'lighter'; // Better for black background
+        ctx.globalAlpha = 0.1 + s.activity * 0.2;
         for(let i=0; i<8; i++) {
             ctx.beginPath();
             const startAngle = (time.current * 0.01 * (i%2 === 0 ? 1 : -1) * (1 + i*0.2));
@@ -162,7 +170,6 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         }
         ctx.restore();
 
-        // --- Nano Particles Orbiting ---
         nanoParticles.current.forEach(p => {
             p.update();
             const {x, y, z} = p.getPosition(baseRadius);
@@ -170,8 +177,7 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
             
             ctx.beginPath();
             const alpha = scale * 0.7;
-            // Particles with a lavender tint
-            ctx.fillStyle = `rgba(220, 210, 255, ${alpha})`;
+            ctx.fillStyle = `rgba(255, 255, 220, ${alpha})`;
             ctx.arc(floatX + x, floatY + y, p.size * scale, 0, Math.PI * 2);
             ctx.fill();
         });

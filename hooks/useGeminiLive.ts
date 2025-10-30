@@ -95,9 +95,9 @@ export const useGeminiLive = (apiKey: string | null) => {
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Fenrir' } },
           },
-          systemInstruction: 'You are an AI language coach. Your voice should be clear and calm. Your goal is to help me practice my English speaking skills. Correct my mistakes gently and ask engaging questions. Keep your responses concise, natural, and easy to understand.'
+          systemInstruction: 'You are JARVIS, an AI language coach. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Your goal is to help me practice my English speaking skills. Correct my mistakes gently and ask engaging questions. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words.'
         },
         callbacks: {
           onopen: () => {
