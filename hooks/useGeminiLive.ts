@@ -127,7 +127,10 @@ export const useGeminiLive = () => {
               const l = inputData.length;
               const int16 = new Int16Array(l);
               for (let i = 0; i < l; i++) {
-                int16[i] = inputData[i] * 32768;
+                // The valid range for a 16-bit signed integer is -32768 to 32767.
+                // Multiplying by 32768 can result in 32768, which is out of range.
+                // Using 32767 ensures the value remains within the valid range.
+                int16[i] = inputData[i] * 32767;
               }
               const pcmBlob: Blob = {
                 data: encode(new Uint8Array(int16.buffer)),

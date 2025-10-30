@@ -5,9 +5,3 @@ export enum ConnectionState {
   CONNECTED = 'CONNECTED',
   ERROR = 'ERROR'
 }
-
-// FIX: Added missing TranscriptEntry type used in Conversation.tsx.
-export interface TranscriptEntry {
-  speaker: 'user' | 'ai';
-  text: string;
-}
