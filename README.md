@@ -1,4 +1,10 @@
-# JARVIS - Your Personal AI Assistant
+# JARVIS - AI Language Assistant
+
+---
+
+<img src="https://github.com/user-attachments/assets/fec11c27-9454-4671-bd05-d499fb98707f" alt="Alt text" width="1766" height="842">
+
+---
 
 JARVIS is your personal AI conversation partner, ready to help with a wide range of tasks. Ask for recipes, learn about new topics, get help with coding, or practice speaking in a new language. Engage in fluid, real-time spoken conversations with a helpful and knowledgeable AI.
 
