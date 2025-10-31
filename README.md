@@ -1,13 +1,8 @@
 # JARVIS - AI Language Coach
-<img src="https://github.com/user-attachments/assets/fec11c27-9454-4671-bd05-d499fb98707f" alt="Alt text" width="1766" height="842">
-
----
 
 JARVIS is your personal AI conversation partner designed to help you master new languages and enhance your English communication skills. Engage in fluid, real-time spoken conversations to build fluency, practice for interviews, or simply become a more confident speaker.
 
 This application provides a seamless voice-first experience, allowing you to converse naturally with an AI that understands and responds in real-time.
-
----
 
 ## Features
 
@@ -31,9 +26,16 @@ This application provides a seamless voice-first experience, allowing you to con
 This application leverages modern web technologies to deliver a responsive and interactive experience:
 
 -   **Frontend:** Built with React and TypeScript for a robust and maintainable user interface.
--   **Core AI:** Powered by advanced generative AI for natural language understanding and response generation.
+-   **Core AI:** Powered by Google's Gemini API for natural language understanding and real-time audio generation.
 -   **Audio I/O:** Utilizes the Web Audio API for real-time microphone input processing and audio output streaming.
 -   **Wake Word Detection:** Implemented using the browser's native Web Speech API.
+
+## Known Issues & Future Ideas
+
+-   **Keyword Detection:** The Web Speech API for "Hey JARVIS" detection can be inconsistent across different browsers and may sometimes stop listening. A more robust, custom wake-word engine would be an improvement.
+-   **Browser Support:** This app works best on modern desktop browsers like Chrome and Edge. Mobile browser support for the required audio APIs can be limited.
+-   **Future: Conversation History:** A visual transcript of the conversation could be added to allow users to review their session.
+-   **Future: More Voices:** The AI voice is currently fixed. An option to choose different voices could be implemented.
 
 ---
 

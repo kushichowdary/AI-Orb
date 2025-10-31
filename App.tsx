@@ -8,6 +8,10 @@ import { playStopSound } from './utils/audioCues';
 
 const LANGUAGES = ['English', 'Telugu', 'Spanish', 'French', 'German', 'Hindi'];
 
+/**
+ * Generates a user-friendly status message based on the application's current state.
+ * This helps the user understand what's happening at any given moment.
+ */
 const getStatusText = (
   state: ConnectionState, 
   isSpeaking: boolean, 
@@ -31,16 +35,25 @@ const getStatusText = (
       if (isUserSpeaking) return "I hear you...";
       return "I'm listening.";
     default:
+      // This should never be reached, but it's good practice to have a default.
       return "";
   }
 };
 
 const App: React.FC = () => {
   const [selectedLanguage, setSelectedLanguage] = useState(LANGUAGES[0]);
+
+  // The core hook that manages the Gemini Live session.
   const { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking } = useGeminiLive(process.env.API_KEY || null, selectedLanguage);
 
+  // A helper boolean to determine if the app is in a state where a new session can be started.
   const isIdle = connectionState === ConnectionState.DISCONNECTED || connectionState === ConnectionState.ERROR;
+  
+  // A helper boolean to determine if a session is currently active or trying to connect.
+  const isSessionActive = connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.CONNECTED;
 
+  // The hook that listens for the "Hey JARVIS" keyword.
+  // It's only enabled when the app is idle to save resources.
   const { permissionDenied: keywordPermissionDenied } = useKeywordDetection({
     keywords: ['start', 'hey jarvis'],
     onKeywordDetected: startSession,
@@ -48,17 +61,17 @@ const App: React.FC = () => {
   });
 
   const handleOrbClick = () => {
+    // The orb can only start a session, not stop it.
     if (isIdle) {
       startSession();
     }
   };
 
   const handleStopSession = () => {
+    // Play a sound cue to confirm the action.
     playStopSound();
     stopSession();
   };
-
-  const isSessionActive = connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.CONNECTED;
 
   return (
     <main className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden p-4 bg-black text-white">
@@ -84,6 +97,7 @@ const App: React.FC = () => {
 
       <div className="h-16 z-10 flex items-center justify-center">
         {isSessionActive ? (
+          // Show the 'Stop' button only when a session is active.
           <button
             onClick={handleStopSession}
             aria-label="Stop Session"
@@ -96,6 +110,7 @@ const App: React.FC = () => {
             Stop
           </button>
         ) : (
+          // Show the language selector when idle.
            <div className="relative">
             <select
               value={selectedLanguage}
@@ -109,6 +124,7 @@ const App: React.FC = () => {
                 </option>
               ))}
             </select>
+            {/* Simple dropdown arrow */}
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
             </div>
