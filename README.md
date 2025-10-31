@@ -1,16 +1,16 @@
-# JARVIS - AI Language Coach
+# JARVIS - Your Personal AI Assistant
 
-JARVIS is your personal AI conversation partner designed to help you master new languages and enhance your English communication skills. Engage in fluid, real-time spoken conversations to build fluency, practice for interviews, or simply become a more confident speaker.
+JARVIS is your personal AI conversation partner, ready to help with a wide range of tasks. Ask for recipes, learn about new topics, get help with coding, or practice speaking in a new language. Engage in fluid, real-time spoken conversations with a helpful and knowledgeable AI.
 
 This application provides a seamless voice-first experience, allowing you to converse naturally with an AI that understands and responds in real-time.
 
 ## Features
 
--   **Seamless Real-time Conversation:** Speak naturally and receive instant, human-like audio responses, creating an immersive practice environment.
--   **Multi-language Support:** Choose from a selection of languages, including English, Spanish, French, German, Hindi, and Telugu, to practice with a native-sounding AI partner.
--   **Voice-Activated Start:** Simply say "Hey JARVIS" to begin your session, allowing for a hands-free and intuitive experience.
+-   **Versatile AI Assistant:** Get help with cooking by asking for recipes, learn about new subjects, get explanations for coding problems, and more.
+-   **Seamless Real-time Conversation:** Speak naturally and receive instant, human-like audio responses.
+-   **Multi-language Support:** Converse in English, Spanish, French, German, Hindi, or Telugu.
+-   **Voice-Activated Start:** Simply say "Hey JARVIS" to begin your session for a hands-free experience.
 -   **Dynamic Visual Feedback:** An interactive orb visualizer provides real-time feedback, reacting to your voice and the AI's responses.
--   **Constructive English Coaching:** When practicing English, JARVIS offers gentle corrections and guidance to help you refine your grammar and pronunciation.
 
 ## How to Use
 
@@ -18,7 +18,7 @@ This application provides a seamless voice-first experience, allowing you to con
 2.  **Start the Conversation:**
     -   **Voice Command:** Say the wake phrase "Hey JARVIS".
     -   **Manual Start:** Tap the central orb on the screen.
-3.  **Engage in Conversation:** Begin speaking. The orb's animation will change to show when it's listening to you and when it's speaking.
+3.  **Engage in Conversation:** Begin speaking. The orb's animation will change to show when it's listening to you and when it's speaking. Ask for recipes, coding help, or anything else you'd like to learn or discuss.
 4.  **End the Session:** When you're finished, click the "Stop" button to conclude the conversation.
 
 ## Technology

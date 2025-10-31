@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from "@google/genai";
 import { ConnectionState } from '../types';
@@ -12,17 +11,20 @@ const OUTPUT_SAMPLE_RATE = 24000;
 
 /**
  * Creates a dynamic system instruction for the AI based on the selected language.
- * This primes the AI with its persona (JARVIS, a female AI language coach) and its goal.
+ * This primes the AI with its persona (JARVIS, a versatile AI assistant) and its goal.
  */
 const createSystemInstruction = (language: string): string => {
     // The base persona for JARVIS.
-    const baseInstruction = 'You are JARVIS, a female AI language coach. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words.';
+    const baseInstruction = 'You are JARVIS, a helpful and versatile AI assistant with a female voice. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words.';
 
-    // Add specific instructions for English practice vs. other languages.
+    // Defines the broad capabilities of the assistant.
+    const capabilities = 'You are capable of a wide range of tasks. You can explain complex topics simply for educational purposes, provide detailed step-by-step food recipes, and help with coding problems by explaining concepts and providing code examples. You can also engage in general conversation on any topic.';
+
+    // Add language-specific instructions.
     if (language.toLowerCase() === 'english') {
-        return `${baseInstruction} Your goal is to help me practice my English speaking skills. Correct my mistakes gently and ask engaging questions.`;
+        return `${baseInstruction} ${capabilities} The user wants to converse in English. Be a helpful and engaging conversation partner.`;
     } else {
-        return `${baseInstruction} The user has chosen to converse in ${language}. Please conduct the conversation primarily in ${language}. Your goal is to be a helpful and patient conversation partner in their chosen language.`;
+        return `${baseInstruction} ${capabilities} The user has chosen to converse in ${language}. Please conduct the conversation primarily in ${language}. Your goal is to be a helpful and patient conversation partner in their chosen language.`;
     }
 };
 
