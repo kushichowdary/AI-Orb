@@ -199,6 +199,34 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
             ctx.stroke();
         }
         ctx.restore();
+        
+        // --- Orb Core ---
+        // A glowing, pulsating core at the center.
+        ctx.save();
+        const coreBaseRadius = baseRadius * 0.15;
+        // The core "breathes" with a slow sine wave.
+        const breath = Math.sin(time.current * 0.03) * 0.1 + 0.95;
+        const coreRadius = coreBaseRadius * breath;
+        const glowRadius = coreRadius * 2.5;
+
+        // Outer glow using a radial gradient for a soft falloff.
+        const glowGradient = ctx.createRadialGradient(floatX, floatY, coreRadius, floatX, floatY, glowRadius);
+        glowGradient.addColorStop(0, `hsla(${HUE}, ${SATURATION}%, ${LIGHTNESS + 20}%, 0.6)`);
+        glowGradient.addColorStop(1, `hsla(${HUE}, ${SATURATION}%, ${LIGHTNESS}%, 0)`);
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(floatX, floatY, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner solid part of the core.
+        ctx.fillStyle = `hsl(${HUE}, ${SATURATION}%, ${LIGHTNESS + 30}%)`;
+        ctx.shadowColor = `hsl(${HUE}, 100%, 80%)`;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(floatX, floatY, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
 
         // --- Nano Particles ---
         // Renders the small particles, creating a 3D effect by scaling them based on their Z position.
