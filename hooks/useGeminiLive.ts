@@ -135,8 +135,15 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
     setError(null);
 
     try {
-      // Step 1: Get microphone access. This will prompt the user for permission.
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Step 1: Get microphone access with enhanced audio processing enabled.
+      // This helps filter out background noise and echo for clearer input.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          noiseSuppression: true,
+          echoCancellation: true,
+          autoGainControl: true,
+        },
+      });
       mediaStreamRef.current = stream;
 
       // Step 2: Create separate AudioContexts for input and output.
