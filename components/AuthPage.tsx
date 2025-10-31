@@ -125,7 +125,8 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
         </form>
 
         <div className="text-center mt-6">
-          {authMode === 'login' && (
+          {/* FIX: Refactored to a ternary operator to simplify logic and fix a potential TypeScript error. */}
+          {authMode === 'login' ? (
              <>
                 <button onClick={() => { setAuthMode('forgotPassword'); setError(null); }} className="text-sm text-gray-400 hover:text-lime-400 transition-colors">
                     Forgot Password?
@@ -137,8 +138,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
                     </button>
                 </p>
              </>
-          )}
-          {(authMode === 'signup' || authMode === 'forgotPassword') && (
+          ) : (
             <p className="text-sm text-gray-500">
               Remember your password?{' '}
               <button onClick={() => { setAuthMode('login'); setError(null); }} className="font-semibold text-lime-400 hover:text-lime-300 transition-colors">

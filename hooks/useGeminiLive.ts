@@ -251,7 +251,7 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
           onerror: (e: ErrorEvent) => {
             playErrorSound();
             console.error('Gemini Live API Error:', e);
-            setError(`Connection error. Please try again.`);
+            setError('A network error occurred. Please check your connection and try again.');
             setConnectionState(ConnectionState.ERROR);
             stopSession();
           },
@@ -264,14 +264,14 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
     } catch (err) {
       playErrorSound();
       console.error('Failed to start session:', err);
-      // Provide more specific error messages to the user.
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+
       if (errorMessage.includes('API key not valid') || errorMessage.includes('invalid API key')) {
-        setError('API key is invalid.');
-      } else if (errorMessage.includes('Permission denied')) {
+        setError('Invalid API key. Please ensure it is correct and has permissions.');
+      } else if (errorMessage.includes('Permission denied') || errorMessage.includes('not-allowed')) {
         setError('Microphone permission denied. Please enable it in your browser settings.');
       } else {
-        setError(errorMessage);
+        setError('An unexpected error occurred. Please try again.');
       }
       setConnectionState(ConnectionState.ERROR);
       stopSession();

@@ -90,6 +90,8 @@ const App: React.FC = () => {
             selectedLanguage={selectedLanguage}
             onLanguageChange={setSelectedLanguage}
             languages={LANGUAGES}
+            connectionState={connectionState}
+            onRetry={startSession}
           />
 
           <Footer />

@@ -31,7 +31,7 @@ const getStatusText = (
     case ConnectionState.CONNECTING:
       return "Connecting...";
     case ConnectionState.ERROR:
-       return "An error occurred. Please tap to retry.";
+       return "An error occurred. Please use the retry button.";
     case ConnectionState.CONNECTED:
       if (isSpeaking) return "Listening to JARVIS...";
       if (isUserSpeaking) return "I hear you...";
