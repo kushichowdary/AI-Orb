@@ -11,7 +11,7 @@ interface HeaderProps {
  * Uses a grid layout to ensure the title is perfectly centered.
  */
 export const Header: React.FC<HeaderProps> = ({ onLogout }) => (
-  <header className="absolute top-0 left-0 right-0 p-6 grid grid-cols-3 items-center z-20 w-full">
+  <header className="p-4 md:p-6 grid grid-cols-3 items-center z-20 w-full">
     {/* Empty left cell for spacing, ensuring the title is centered in the middle cell */}
     <div /> 
     <h1 className="font-jarvis text-3xl font-bold text-white tracking-wider text-center col-start-2">

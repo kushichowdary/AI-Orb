@@ -82,7 +82,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <main className="h-screen w-full flex flex-col items-center justify-center relative overflow-hidden p-4 bg-black text-white">
+    <main className="h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-black text-white">
       {isAuthenticated ? (
         <>
           {postAuthState === 'showingPass' && (
@@ -90,11 +90,11 @@ const App: React.FC = () => {
           )}
 
           {postAuthState === 'showingOrb' && (
-            <div className="w-full h-full flex flex-col animate-fadeIn">
+            <div className="w-full h-screen flex flex-col animate-fadeIn">
               <Header onLogout={handleLogout} />
               
               {/* Main content area that grows and centers content */}
-              <div className="flex-1 w-full flex flex-col items-center justify-center p-4 pb-20 md:pb-4 overflow-hidden">
+              <div className="flex-1 w-full flex flex-col items-center justify-center p-4 overflow-hidden">
                 {/* Responsive container for the orb to maintain its aspect ratio */}
                 <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
                     <InteractiveOrb
