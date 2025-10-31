@@ -1,6 +1,6 @@
 {
   "name": "JARVIS",
-  "description": "Your personal AI assistant. Ask for recipes, learn about new topics, get help with coding, or just have a conversation in multiple languages.",
+  "description": "A futuristic AI assistant featuring a digital pass interface, with voice activation and real-time conversation capabilities.",
   "requestFramePermissions": [
     "microphone"
   ]

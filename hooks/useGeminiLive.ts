@@ -119,24 +119,29 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
   /**
    * Initiates a new Gemini Live session.
    * This involves getting microphone permissions, setting up audio contexts,
-   * and establishing the connection to the API.
+   * and establishing the connection to the API. It includes retry logic for specific, recoverable errors.
    */
-  const startSession = useCallback(async () => {
-    if (connectionState !== ConnectionState.DISCONNECTED && connectionState !== ConnectionState.ERROR) return;
+  const startSession = useCallback(async (retryCount = 3, delay = 1000, isRetry = false) => {
+    // Prevent starting a new session if one is already active, unless it's an internal retry.
+    if (!isRetry && connectionState !== ConnectionState.DISCONNECTED && connectionState !== ConnectionState.ERROR) {
+      return;
+    }
 
     if (!apiKey) {
       setError("API Key is not set.");
       setConnectionState(ConnectionState.ERROR);
       return;
     }
-
-    playConnectingSound();
-    setConnectionState(ConnectionState.CONNECTING);
-    setError(null);
+    
+    // Only play sound and set initial state on the first attempt, not on retries.
+    if (!isRetry) {
+        playConnectingSound();
+        setConnectionState(ConnectionState.CONNECTING);
+        setError(null);
+    }
 
     try {
-      // Step 1: Get microphone access with enhanced audio processing enabled.
-      // This helps filter out background noise and echo for clearer input.
+      // Step 1: Get microphone access.
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           noiseSuppression: true,
@@ -146,15 +151,13 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
       });
       mediaStreamRef.current = stream;
 
-      // Step 2: Create separate AudioContexts for input and output.
-      // This is necessary because they use different sample rates.
+      // Step 2: Create audio contexts.
       inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
       outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
       
       const ai = new GoogleGenAI({ apiKey });
 
-      // Step 3: Initiate the connection. The `connect` method returns a promise
-      // that resolves with the session object. We store the promise itself in a ref.
+      // Step 3: Initiate connection.
       sessionPromiseRef.current = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
@@ -166,35 +169,23 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
         },
         callbacks: {
           onopen: () => {
-            // Connection successful!
             playConnectedSound();
             setConnectionState(ConnectionState.CONNECTED);
             
-            // Step 4: Set up the audio processing pipeline.
-            // MediaStreamSource -> ScriptProcessor -> Destination (optional, for monitoring)
+            // Step 4: Set up audio processing pipeline.
             const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
             mediaStreamSourceRef.current = source;
-
-            // The ScriptProcessorNode is a bit old, but it's the most compatible way
-            // to get raw audio data from the microphone.
             const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
 
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
-
-              // User speaking detection for UI feedback.
               if (!isSilent(inputData)) {
                 setIsUserSpeaking(true);
-                if (userSpeakingTimeoutRef.current) {
-                  clearTimeout(userSpeakingTimeoutRef.current);
-                }
-                userSpeakingTimeoutRef.current = window.setTimeout(() => {
-                  setIsUserSpeaking(false);
-                }, 500); // Reset after 500ms of silence
+                if (userSpeakingTimeoutRef.current) clearTimeout(userSpeakingTimeoutRef.current);
+                userSpeakingTimeoutRef.current = window.setTimeout(() => setIsUserSpeaking(false), 500);
               }
               
-              // Convert the Float32Array to 16-bit PCM, then to a Base64 string.
               const l = inputData.length;
               const int16 = new Int16Array(l);
               for (let i = 0; i < l; i++) {
@@ -205,19 +196,14 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
                 mimeType: 'audio/pcm;rate=16000',
               };
 
-              // Send the audio data to Gemini. We use the promise ref to ensure
-              // we don't send data before the session is established.
               sessionPromiseRef.current?.then((session) => {
                 session.sendRealtimeInput({ media: pcmBlob });
               });
             };
             source.connect(scriptProcessor);
-            // We connect to the destination to avoid a bug in some browsers where
-            // the onaudioprocess event stops firing if the node isn't connected to an output.
             scriptProcessor.connect(inputAudioContextRef.current!.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
-            // The model can interrupt its own speech. If so, clear the audio queue.
             if (message.serverContent?.interrupted) {
               audioPlaybackStateRef.current.sources.forEach(source => source.stop());
               audioPlaybackStateRef.current.sources.clear();
@@ -228,34 +214,46 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
             const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (audioData) {
               if (!isSpeaking) setIsSpeaking(true);
-
               const audioCtx = outputAudioContextRef.current!;
               const { sources } = audioPlaybackStateRef.current;
-              
-              // This is the core of gapless playback: schedule the next chunk to play
-              // exactly when the previous one finishes.
               let nextStartTime = Math.max(audioPlaybackStateRef.current.nextStartTime, audioCtx.currentTime);
-              
               const audioBuffer = await decodeAudioData(decode(audioData), audioCtx, OUTPUT_SAMPLE_RATE, 1);
               const source = audioCtx.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(audioCtx.destination);
-              
               source.onended = () => {
                 sources.delete(source);
-                // Only set isSpeaking to false when the *last* chunk has finished playing.
-                if (sources.size === 0) {
-                    setIsSpeaking(false);
-                }
+                if (sources.size === 0) setIsSpeaking(false);
               };
-
               source.start(nextStartTime);
-              // Update the start time for the *next* chunk.
               audioPlaybackStateRef.current.nextStartTime = nextStartTime + audioBuffer.duration;
               sources.add(source);
             }
           },
           onerror: (e: ErrorEvent) => {
+            const error = e as any;
+            const errorMessage = (error.message || '').toLowerCase();
+            const isRetryable503 = errorMessage.includes('503') || errorMessage.includes('service unavailable');
+            
+            // For transient server errors, attempt an automatic reconnect.
+            if (isRetryable503) {
+              console.warn('Live session error (503), attempting automatic reconnect...');
+              stopSession();
+              setTimeout(() => startSession(), 1000); // Reconnect after a short delay
+              return;
+            }
+
+            const isConflict409 = errorMessage.includes('409') || errorMessage.includes('conflict');
+            if (isConflict409) {
+                playErrorSound();
+                console.error('Gemini Live API Error (Conflict):', e);
+                setError('A session conflict occurred. Please try starting a new session.');
+                setConnectionState(ConnectionState.ERROR);
+                stopSession();
+                return;
+            }
+
+            // Default handling for other errors.
             playErrorSound();
             console.error('Gemini Live API Error:', e);
             setError('A network error occurred. Please check your connection and try again.');
@@ -263,20 +261,31 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
             stopSession();
           },
           onclose: () => {
-            // The session was closed, likely by the server or network issues.
             stopSession();
           },
         },
       });
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message.toLowerCase() : 'an unknown error occurred.';
+      const isRetryable = errorMessage.includes('503') || errorMessage.includes('service unavailable') || errorMessage.includes('409') || errorMessage.includes('conflict');
+
+      if (isRetryable && retryCount > 0) {
+        console.warn(`Session start failed, retrying in ${delay}ms... (${retryCount} retries left). Error: ${errorMessage}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        await startSession(retryCount - 1, delay * 2, true); // Recursive call with backoff
+        return; // Exit after scheduling the retry
+      }
+      
+      // If not retryable or retries are exhausted, handle the error.
       playErrorSound();
       console.error('Failed to start session:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
 
-      if (errorMessage.includes('API key not valid') || errorMessage.includes('invalid API key')) {
+      if (errorMessage.includes('api key not valid') || errorMessage.includes('invalid api key')) {
         setError('Invalid API key. Please ensure it is correct and has permissions.');
-      } else if (errorMessage.includes('Permission denied') || errorMessage.includes('not-allowed')) {
+      } else if (errorMessage.includes('permission denied') || errorMessage.includes('not-allowed')) {
         setError('Microphone permission denied. Please enable it in your browser settings.');
+      } else if (isRetryable) { // This means retries were exhausted
+         setError('The service is temporarily unavailable. Please try again later.');
       } else {
         setError('An unexpected error occurred. Please try again.');
       }
