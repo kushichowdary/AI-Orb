@@ -11,8 +11,9 @@ import { StatusIndicator } from './components/StatusIndicator';
 import { Controls } from './components/Controls';
 import { Footer } from './components/Footer';
 import { playStopSound } from './utils/audioCues';
+import { SystemCoreTransition } from './components/SystemCoreTransition';
 
-type PostAuthState = 'initial' | 'showingPass' | 'showingOrb';
+type PostAuthState = 'initial' | 'showingPass' | 'bootingSequence' | 'showingOrb';
 
 /**
  * A small, single-use component to display a personalized welcome message.
@@ -108,8 +109,12 @@ const App: React.FC = () => {
                 <div className="absolute top-[15%] left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
                     <WelcomeTitle />
                 </div>
-                <Card onExitAnimationComplete={() => setPostAuthState('showingOrb')} />
+                <Card onExitAnimationComplete={() => setPostAuthState('bootingSequence')} />
             </div>
+          )}
+          
+          {postAuthState === 'bootingSequence' && (
+            <SystemCoreTransition onComplete={() => setPostAuthState('showingOrb')} />
           )}
 
           {postAuthState === 'showingOrb' && (

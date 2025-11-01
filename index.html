@@ -200,6 +200,209 @@
       .particle:nth-child(28) { width: 3px; height: 3px; left: 12%; animation-duration: 20s; animation-delay: -3s; }
       .particle:nth-child(29) { width: 2px; height: 2px; left: 42%; animation-duration: 13s; animation-delay: -7s; }
       .particle:nth-child(30) { width: 1px; height: 1px; left: 92%; animation-duration: 26s; animation-delay: -11s; }
+    
+      /* --- Orb Calibration Sequence --- */
+      .calibration-container {
+        position: fixed;
+        inset: 0;
+        background-color: #02040a;
+        color: #b8fb3c;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Orbitron', sans-serif;
+        animation: core-fade-in 1s ease-out;
+        z-index: 100;
+      }
+
+      @keyframes core-fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      .core-scanline {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, rgba(184, 251, 60, 0.05) 50%, rgba(184, 251, 60, 0) 50%);
+        background-size: 100% 4px;
+        animation: scanline 10s linear infinite;
+        opacity: 0.4;
+      }
+      @keyframes scanline {
+          from { background-position: 0 0; }
+          to { background-position: 0 200px; }
+      }
+
+      .core-grid {
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(184, 251, 60, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(184, 251, 60, 0.05) 1px, transparent 1px);
+        background-size: 50px 50px;
+        transform: perspective(800px) rotateX(75deg) translateY(25%);
+        animation: core-grid-scroll 40s linear infinite;
+        opacity: 0.3;
+      }
+
+      @keyframes core-grid-scroll {
+        from { background-position: 0 0; }
+        to { background-position: 0 -800px; }
+      }
+
+      .core-vignette {
+        position: absolute;
+        inset: 0;
+        box-shadow: inset 0 0 250px 80px #02040a;
+      }
+
+      .calibration-hud {
+        position: relative;
+        width: 400px;
+        height: 400px;
+      }
+
+      .calibration-hud-svg {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+
+      .calibration-core {
+        fill: #d9fec5;
+        filter: drop-shadow(0 0 12px #b8fb3c) drop-shadow(0 0 25px rgba(184, 251, 60, 0.6));
+        transform-origin: center;
+        animation: materialize-core 1s ease-out forwards, pulse-core 4s ease-in-out 1s infinite;
+      }
+      @keyframes materialize-core {
+        from { transform: scale(0); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      @keyframes pulse-core {
+        0%, 100% {
+          transform: scale(0.9);
+          filter: drop-shadow(0 0 12px #b8fb3c) drop-shadow(0 0 25px rgba(184, 251, 60, 0.6));
+        }
+        50% {
+          transform: scale(1.1);
+          filter: drop-shadow(0 0 20px #b8fb3c) drop-shadow(0 0 40px rgba(184, 251, 60, 0.8));
+        }
+      }
+
+      .sonar-ring {
+        fill: none;
+        stroke: #b8fb3c;
+        stroke-width: 1;
+        transform-origin: center;
+        opacity: 0;
+        animation: sonar-ping 2.5s cubic-bezier(0.1, 0.7, 0, 1) infinite;
+        animation-delay: var(--delay);
+      }
+      @keyframes sonar-ping {
+        0% { transform: scale(0.1); opacity: 1; }
+        100% { transform: scale(1.5); opacity: 0; }
+      }
+
+      .structure-arc {
+        fill: none;
+        stroke: #b8fb3c;
+        stroke-width: 1.5;
+        stroke-linecap: round;
+        stroke-dasharray: 500;
+        stroke-dashoffset: 500;
+        opacity: 0;
+        animation: draw-arc 1.5s ease-out forwards;
+        animation-delay: var(--delay);
+      }
+      @keyframes draw-arc {
+        0% { opacity: 0.8; }
+        100% { stroke-dashoffset: 0; opacity: 1; }
+      }
+      .structure-arc.glow {
+        filter: drop-shadow(0 0 8px #b8fb3c) drop-shadow(0 0 16px rgba(184, 251, 60, 0.5));
+        stroke-width: 2.5;
+        stroke: #d9fec5;
+      }
+      
+      .orb-glow-layer {
+        fill: none;
+        stroke: #b8fb3c;
+        stroke-width: 5;
+        transform-origin: center;
+        opacity: 0;
+        filter: blur(25px);
+        animation: glow-fade-in-pulse 4s ease-out forwards;
+        animation-delay: var(--delay);
+      }
+
+      @keyframes glow-fade-in-pulse {
+        0% { opacity: 0; transform: scale(0.95); }
+        50% { opacity: 0.5; transform: scale(1.02); }
+        100% { opacity: 0.4; transform: scale(1); }
+      }
+
+      .calibration-hud.fade-out {
+        animation: hud-fade-out 1s ease-in forwards;
+      }
+      @keyframes hud-fade-out {
+        to { opacity: 0; transform: scale(1.2); }
+      }
+      
+      .core-text-container {
+        position: absolute;
+        bottom: 10vh;
+        width: 500px;
+        max-width: 90vw;
+        padding: 1rem;
+        text-align: left;
+        font-size: 0.9rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #b8fb3c;
+        text-shadow: 0 0 6px rgba(184, 251, 60, 0.5);
+        opacity: 0;
+        animation: text-container-fade-in 1s ease-out 0.5s forwards;
+      }
+      @keyframes text-container-fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .core-text-container.fade-out {
+          animation: text-container-fade-out 1s ease-in forwards;
+      }
+      @keyframes text-container-fade-out {
+          to { opacity: 0; }
+      }
+      
+      .log-line {
+        display: block;
+        white-space: pre;
+        opacity: 0;
+        animation: log-line-fade-in 0.4s ease-out forwards;
+      }
+      @keyframes log-line-fade-in {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .blinking-cursor {
+        display: inline-block;
+        width: 0.6em;
+        height: 1.1em;
+        background-color: #b8fb3c;
+        margin-left: 0.2em;
+        box-shadow: 0 0 8px rgba(184, 251, 60, 0.7);
+        animation: blink 1s step-end infinite;
+        position: relative;
+        top: 0.2em;
+      }
+      @keyframes blink {
+        from, to { background-color: transparent; box-shadow: none; }
+        50% { background-color: #b8fb3c; box-shadow: 0 0 8px rgba(184, 251, 60, 0.7); }
+      }
+
     </style>
   <script type="importmap">
 {

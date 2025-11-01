@@ -144,23 +144,177 @@ export const playPrintingSound = () => {
   }
 };
 
+/**
+ * Plays a cinematic, multi-layered soundscape for the orb calibration sequence.
+ * Evokes a high-tech AI system coming online.
+ * Returns a function to stop all scheduled and playing sounds.
+ */
+export const playBootSequenceSound = (): (() => void) => {
+  try {
+    const ctx = getAudioContext();
+    const now = ctx.currentTime;
+    const duration = 6.0; // Corresponds to TOTAL_DURATION in the component
+    const nodes: (AudioNode | { stop: () => void })[] = [];
+
+    const stopAll = () => {
+        try {
+            nodes.forEach(node => {
+                if ('disconnect' in node) {
+                    node.disconnect();
+                }
+                if ('stop' in node && typeof node.stop === 'function') {
+                    // This handles Oscillators and BufferSources
+                    node.stop();
+                }
+            });
+        } catch (e) {
+            // Can ignore errors if sounds have already finished or nodes are disconnected.
+        }
+    };
+    
+    const masterStopTimeout = setTimeout(stopAll, duration * 1000);
+    nodes.push({ stop: () => clearTimeout(masterStopTimeout) });
+
+    // --- 1. Base ambient hum ---
+    const humOsc = ctx.createOscillator();
+    const humGain = ctx.createGain();
+    humOsc.type = 'sine';
+    humOsc.frequency.setValueAtTime(40, now); // Deep sub-bass hum
+    humGain.gain.setValueAtTime(0, now);
+    humGain.gain.linearRampToValueAtTime(0.08, now + 1.5); // Slow fade in
+    humGain.gain.linearRampToValueAtTime(0, now + duration - 0.5); // Fade out at the end
+    humOsc.connect(humGain).connect(ctx.destination);
+    humOsc.start(now);
+    humOsc.stop(now + duration);
+    nodes.push(humOsc, humGain);
+    
+    // --- 2. Core Materialize Sound (at 0s) ---
+    const coreOsc = ctx.createOscillator();
+    const coreGain = ctx.createGain();
+    coreOsc.type = 'sawtooth';
+    coreOsc.frequency.setValueAtTime(100, now);
+    coreOsc.frequency.exponentialRampToValueAtTime(800, now + 0.8);
+    const coreFilter = ctx.createBiquadFilter();
+    coreFilter.type = 'lowpass';
+    coreFilter.frequency.setValueAtTime(5000, now);
+    coreFilter.frequency.linearRampToValueAtTime(1000, now + 0.8);
+    coreGain.gain.setValueAtTime(0, now);
+    coreGain.gain.linearRampToValueAtTime(0.2, now + 0.1);
+    coreGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    coreOsc.connect(coreFilter).connect(coreGain).connect(ctx.destination);
+    coreOsc.start(now);
+    coreOsc.stop(now + 1.0);
+    nodes.push(coreOsc, coreGain, coreFilter);
+
+    // --- 3. Sonar Ping sounds ---
+    const playPing = (time: number) => {
+        const pingOsc = ctx.createOscillator();
+        const pingGain = ctx.createGain();
+        pingOsc.type = 'sine';
+        pingOsc.frequency.setValueAtTime(1200, now + time);
+        pingOsc.frequency.exponentialRampToValueAtTime(400, now + time + 0.8);
+        pingGain.gain.setValueAtTime(0, now + time);
+        pingGain.gain.linearRampToValueAtTime(0.15, now + time + 0.05);
+        pingGain.gain.exponentialRampToValueAtTime(0.001, now + time + 1.2);
+        pingOsc.connect(pingGain).connect(ctx.destination);
+        pingOsc.start(now + time);
+        pingOsc.stop(now + time + 1.2);
+        nodes.push(pingOsc, pingGain);
+    };
+    playPing(0.2);
+    playPing(1.0);
+    playPing(1.8);
+
+    // --- 4. Structure Arc drawing sounds (high-frequency sizzle) ---
+    const arcNoiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2.5, ctx.sampleRate);
+    const output = arcNoiseBuffer.getChannelData(0);
+    for (let i = 0; i < arcNoiseBuffer.length; i++) {
+        output[i] = Math.random() * 2 - 1;
+    }
+    const arcNoise = ctx.createBufferSource();
+    arcNoise.buffer = arcNoiseBuffer;
+    arcNoise.loop = true;
+    const arcFilter = ctx.createBiquadFilter();
+    arcFilter.type = 'bandpass';
+    arcFilter.frequency.value = 4000;
+    arcFilter.Q.value = 15;
+    const arcGain = ctx.createGain();
+    arcGain.gain.setValueAtTime(0, now + 1.0);
+    arcGain.gain.linearRampToValueAtTime(0.05, now + 1.2); // Fade in as arcs start drawing
+    arcGain.gain.setValueAtTime(0.05, now + 2.8);
+    arcGain.gain.linearRampToValueAtTime(0, now + 3.2);    // Fade out as they finish
+    arcNoise.connect(arcFilter).connect(arcGain).connect(ctx.destination);
+    arcNoise.start(now + 1.0);
+    arcNoise.stop(now + 3.3);
+    nodes.push(arcNoise, arcFilter, arcGain);
+    
+    // --- 5. Data Ticks for each log line ---
+    const playDataTick = (time: number) => {
+      const tickOsc = ctx.createOscillator();
+      const tickGain = ctx.createGain();
+      tickOsc.type = 'square';
+      tickOsc.frequency.setValueAtTime(2500, now + time);
+      tickGain.gain.setValueAtTime(0, now + time);
+      tickGain.gain.linearRampToValueAtTime(0.05, now + time + 0.005);
+      tickGain.gain.exponentialRampToValueAtTime(0.0001, now + time + 0.1);
+      tickOsc.connect(tickGain).connect(ctx.destination);
+      tickOsc.start(now + time);
+      tickOsc.stop(now + time + 0.1);
+      nodes.push(tickOsc, tickGain);
+    };
+
+    const lineInterval = 700 / 1000;
+    for (let i = 0; i < 6; i++) {
+        playDataTick(1.0 + i * lineInterval);
+    }
+
+    // --- 6. Final Confirmation Sound ---
+    const finalTime = 1.0 + 6 * lineInterval;
+    const finalOsc1 = ctx.createOscillator();
+    const finalGain1 = ctx.createGain();
+    finalOsc1.type = 'sine';
+    finalOsc1.frequency.setValueAtTime(1046.50, now + finalTime); // C6
+    finalGain1.gain.setValueAtTime(0, now + finalTime);
+    finalGain1.gain.linearRampToValueAtTime(0.2, now + finalTime + 0.05);
+    finalGain1.gain.exponentialRampToValueAtTime(0.0001, now + finalTime + 1.5);
+    finalOsc1.connect(finalGain1).connect(ctx.destination);
+    finalOsc1.start(now + finalTime);
+    finalOsc1.stop(now + finalTime + 1.5);
+    nodes.push(finalOsc1, finalGain1);
+
+    const finalOsc2 = ctx.createOscillator();
+    const finalGain2 = ctx.createGain();
+    finalOsc2.type = 'sine';
+    finalOsc2.frequency.setValueAtTime(1396.91, now + finalTime); // F6
+    finalGain2.gain.setValueAtTime(0, now + finalTime);
+    finalGain2.gain.linearRampToValueAtTime(0.15, now + finalTime + 0.05);
+    finalGain2.gain.exponentialRampToValueAtTime(0.0001, now + finalTime + 1.5);
+    finalOsc2.connect(finalGain2).connect(ctx.destination);
+    finalOsc2.start(now + finalTime + 0.1); // Slightly offset for a chord effect
+    finalOsc2.stop(now + finalTime + 1.6);
+    nodes.push(finalOsc2, finalGain2);
+
+    return stopAll;
+
+  } catch (e) {
+    console.error("Error playing boot sequence sound:", e);
+    return () => {}; // Return no-op on error
+  }
+};
+
 export const playConnectingSound = () => {
-    // A soft, ascending sine wave
     playSound('sine', 440, 0.5, 0.2, 0.1, 0.1, 880);
 };
 
 export const playConnectedSound = () => {
-    // A pleasant two-tone chime
     playSound('sine', 880, 0.2, 0.3);
     setTimeout(() => playSound('sine', 1046.5, 0.3, 0.3), 100);
 };
 
 export const playErrorSound = () => {
-    // A low, descending sawtooth wave to indicate an issue
     playSound('sawtooth', 330, 0.4, 0.25, 0.01, 0.1, 220);
 };
 
 export const playStopSound = () => {
-    // A short, decisive click sound
     playSound('triangle', 200, 0.15, 0.3, 0.005, 0.1);
 };
