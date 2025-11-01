@@ -99,9 +99,11 @@ export const useKeywordDetection = ({
   }, []);
 
   useEffect(() => {
-    // If the feature is disabled, not supported, or permission has been denied, do nothing.
+    // If the feature is disabled, not supported, or permission has been denied, stop and do nothing.
     if (!enabled || !isSpeechRecognitionSupported || permissionDenied) {
-      if (recognitionRef.current) stopListening();
+      if (recognitionRef.current) {
+        stopListening();
+      }
       return;
     }
 
@@ -125,22 +127,32 @@ export const useKeywordDetection = ({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      // This is the specific error code for when the user denies microphone permission.
+      // 'aborted' is expected when we call stop(), so we can ignore it.
+      if (event.error === 'aborted') {
+        return;
+      }
+      
+      // 'not-allowed' is a permanent error. We set state to disable the hook and prevent restarts.
       if (event.error === 'not-allowed') {
         console.error('SpeechRecognition permission denied. Keyword detection is disabled.');
         isDeniedRef.current = true;
         setPermissionDenied(true);
-      } else if (event.error !== 'aborted') {
-          // 'aborted' is a common error when we stop it manually, so we ignore it.
-          console.error('SpeechRecognition error:', event.error);
+        return;
       }
+
+      // For other transient errors (like 'network', 'service-not-allowed'), we log a warning.
+      // The `onend` event will fire subsequently and handle the restart logic.
+      console.warn(`SpeechRecognition error: "${event.error}". An automatic restart will be attempted.`);
     };
     
     // The SpeechRecognition service can stop for various reasons (e.g., network error, long silence).
     // This handler ensures that we restart it automatically to maintain a persistent listening state.
     recognition.onend = () => {
+      // Only restart if the hook is still enabled and we haven't hit a permanent permission error.
       if (enabled && !isDeniedRef.current) {
-        startListening();
+        // A short delay is crucial to prevent the browser from rate-limiting the service
+        // in cases of rapid, repeated errors (like a flaky network connection).
+        setTimeout(() => startListening(), 500);
       }
     };
 
@@ -148,9 +160,14 @@ export const useKeywordDetection = ({
 
     // Cleanup function: stop listening when the component unmounts or `enabled` becomes false.
     return () => {
-      recognition.onend = null; // Important: remove the onend handler to prevent restarts after unmount.
-      stopListening();
-      recognitionRef.current = null;
+      if (recognitionRef.current) {
+        // Nullify all handlers to prevent any lingering async events from firing after cleanup.
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onresult = null;
+        stopListening();
+        recognitionRef.current = null;
+      }
     };
   }, [enabled, keywords, startListening, stopListening, permissionDenied]);
 

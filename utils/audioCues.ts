@@ -1,3 +1,4 @@
+
 // Create a single AudioContext to be reused.
 let audioContext: AudioContext | null = null;
 const getAudioContext = (): AudioContext => {
@@ -46,47 +47,42 @@ const playSound = (
 
 /**
  * Plays a futuristic "printing" sound for the digital pass.
- * Combines a low hum with a series of high-frequency ticks.
+ * Combines a low hum with a series of high-frequency ticks and a final chime.
  */
 export const playPrintingSound = () => {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
-    const duration = 2.0;
+    const duration = 2.2;
 
-    // Main humming/printing sound
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(120, now);
-    oscillator.frequency.linearRampToValueAtTime(80, now + duration);
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.1, now + 0.1);
-    gainNode.gain.linearRampToValueAtTime(0, now + duration);
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    oscillator.start(now);
-    oscillator.stop(now + duration);
+    // 1. Mechanical hum/whirring sound
+    const humOsc = ctx.createOscillator();
+    const humGain = ctx.createGain();
+    humOsc.type = 'sawtooth';
+    humOsc.frequency.setValueAtTime(80, now);
+    humOsc.frequency.linearRampToValueAtTime(120, now + duration * 0.5);
+    humOsc.frequency.linearRampToValueAtTime(60, now + duration);
+    humGain.gain.setValueAtTime(0, now);
+    humGain.gain.linearRampToValueAtTime(0.08, now + 0.1); // fade in
+    humGain.gain.linearRampToValueAtTime(0, now + duration - 0.1); // fade out
+    humOsc.connect(humGain);
+    humGain.connect(ctx.destination);
+    humOsc.start(now);
+    humOsc.stop(now + duration);
 
-    // High-frequency digital "ticks"
-    const playTick = (freq: number, time: number) => {
-      const tickOsc = ctx.createOscillator();
-      const tickGain = ctx.createGain();
-      tickOsc.type = 'triangle';
-      tickOsc.frequency.setValueAtTime(freq, time);
-      tickGain.gain.setValueAtTime(0, time);
-      tickGain.gain.linearRampToValueAtTime(0.15, time + 0.01);
-      tickGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
-      tickOsc.connect(tickGain);
-      tickGain.connect(ctx.destination);
-      tickOsc.start(time);
-      tickOsc.stop(time + 0.1);
-    };
+    // 2. Series of rapid printing ticks
+    for (let i = 0; i < 18; i++) {
+        const time = now + 0.2 + i * 0.1;
+        playSound('square', 1500 + Math.random() * 500, 0.05, 0.05, 0.005, 0.04);
+    }
     
-    playTick(1200, now + 0.2);
-    playTick(1500, now + 0.5);
-    playTick(1300, now + 0.9);
-    playTick(1600, now + 1.5);
+    // 3. Final confirmation chime
+    const delayInMs = (duration - 0.3) * 1000;
+    setTimeout(() => {
+        playSound('sine', 1046.5, 0.3, 0.2, 0.01, 0.2);
+        setTimeout(() => playSound('sine', 1396.9, 0.3, 0.2, 0.01, 0.2), 80);
+    }, delayInMs);
+
 
   } catch (e) {
     console.error("Error playing printing sound:", e);

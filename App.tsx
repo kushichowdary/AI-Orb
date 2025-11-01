@@ -105,7 +105,7 @@ const App: React.FC = () => {
         <>
           {postAuthState === 'showingPass' && (
              <div className="relative w-full h-full">
-                <div className="absolute top-[25%] left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
+                <div className="absolute top-[15%] left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
                     <WelcomeTitle />
                 </div>
                 <Card onExitAnimationComplete={() => setPostAuthState('showingOrb')} />
@@ -117,35 +117,39 @@ const App: React.FC = () => {
               <Header onLogout={handleLogout} />
               
               {/* Main content area that grows and centers content */}
-              <div className="flex-1 w-full flex flex-col items-center justify-around p-4 overflow-hidden">
-                {/* Responsive container for the orb to maintain its aspect ratio */}
-                <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
-                    <InteractiveOrb
+              <div className="flex-1 w-full flex flex-col p-4 overflow-hidden">
+                {/* Orb container takes up most of the space and centers the orb */}
+                <div className="flex-1 w-full flex items-center justify-center">
+                    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
+                        <InteractiveOrb
+                            connectionState={connectionState}
+                            isSpeaking={isSpeaking}
+                            isUserSpeaking={isUserSpeaking}
+                            onClick={handleOrbClick}
+                            disabled={isSessionActive}
+                        />
+                    </div>
+                </div>
+                
+                {/* Controls are in a container at the bottom of this flex area */}
+                <div>
+                    <StatusIndicator
                         connectionState={connectionState}
                         isSpeaking={isSpeaking}
                         isUserSpeaking={isUserSpeaking}
-                        onClick={handleOrbClick}
-                        disabled={isSessionActive}
+                        error={error}
+                        keywordPermissionDenied={keywordPermissionDenied}
+                    />
+                    <Controls
+                        isSessionActive={isSessionActive}
+                        onStopSession={handleStopSession}
+                        selectedLanguage={language}
+                        onLanguageChange={setLanguage}
+                        languages={languages}
+                        connectionState={connectionState}
+                        onRetry={() => startSession()}
                     />
                 </div>
-                
-                {/* UI elements below the orb */}
-                <StatusIndicator
-                    connectionState={connectionState}
-                    isSpeaking={isSpeaking}
-                    isUserSpeaking={isUserSpeaking}
-                    error={error}
-                    keywordPermissionDenied={keywordPermissionDenied}
-                />
-                <Controls
-                    isSessionActive={isSessionActive}
-                    onStopSession={handleStopSession}
-                    selectedLanguage={language}
-                    onLanguageChange={setLanguage}
-                    languages={languages}
-                    connectionState={connectionState}
-                    onRetry={() => startSession()}
-                />
               </div>
 
               <Footer />
@@ -154,7 +158,14 @@ const App: React.FC = () => {
         </>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-            <AuthPage onLoginSuccess={handleLoginSuccess} />
+            <div id="particle-container">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <span key={i} className="particle" />
+              ))}
+            </div>
+            <div className="relative">
+              <AuthPage onLoginSuccess={handleLoginSuccess} />
+            </div>
         </div>
       )}
     </main>

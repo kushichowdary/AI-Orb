@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { playPrintingSound } from '../utils/audioCues';
@@ -6,21 +7,40 @@ interface CardProps {
   onExitAnimationComplete: () => void;
 }
 
+const PLACEHOLDER_QR = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEX///8AAABVwtN+AAABaklEQVR42u3WMW7DMAwEUJjU0iZpA6UDoAQ0UqTNkC6QO1A6AOzY8QaKNLEzI1mJ/2R8Fz+sSCylgkdV5Y5Z7pjlzlgBwN/z5o+Z745Z7pjlzlh3zHJLzPdscc8sc8css8wyyxwh4/Lmx+bmsjlmuWOWO2cF5O5Y5m5zzHLLLHN8O2b5Y/M9Y5Y7Z7ljljtjBbJ7rpllljn+z3JHZLPMMscss8wyS8wLyL1jlplljjn+zHLLLHMs4e5Y5jlmuWOWO2cFMueOWe6Y5Q4A/h3O8sckd8wyS8wyyxwh4/Lmsjn+zDLLO+OWWWaZZZZZ5o7ZPSuQ2TPLHLPMMsscsdwxyx2zzDLLLDOsO2aZZeaO2TPLHLPMMscss8wyyxwh4/Lmh80ds8wyS8wyyxyx3DLLnLHcMcsds8wyS8wyyxwh4/Lmh80ds8wyS8wyyxyx3DLLnLHcMcsds8wyS8wyyxwh4/Lmh80ds8wyS8wyyxwnmfsL5w9U3v5dAAAAAElFTSuQmCC";
+
 const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
   const [animationState, setAnimationState] = useState('entering');
   const [isFlipped, setIsFlipped] = useState(false);
   const [currentDate] = useState(new Date());
   const [userName, setUserName] = useState('AGENT');
+  const [qrCodeUrlFront, setQrCodeUrlFront] = useState(PLACEHOLDER_QR);
+  const [qrCodeUrlBack, setQrCodeUrlBack] = useState(PLACEHOLDER_QR);
 
   useEffect(() => {
-    // Play the printing sound as soon as the component mounts.
+    // Play the printing sound and vibration as soon as the component mounts.
     playPrintingSound();
+    if ('vibrate' in navigator) {
+      // A pattern to simulate a printer's mechanical movements.
+      navigator.vibrate([100, 30, 100, 30, 100, 30, 200, 30, 200, 30, 200, 30, 400]);
+    }
 
     // retrieve user name from local storage
     const storedName = localStorage.getItem('jarvis-user-name');
     if (storedName) {
       setUserName(storedName.toUpperCase());
     }
+
+    // Generate dynamic QR code
+    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+    const qrData = JSON.stringify({ 
+        user: storedName || 'AGENT', 
+        issued: dateStr,
+        passId: `JARVIS-${Math.random().toString(36).substring(2, 10).toUpperCase()}` 
+    });
+    const baseUrl = 'https://api.qrserver.com/v1/create-qr-code/?data=';
+    setQrCodeUrlBack(`${baseUrl}${encodeURIComponent(qrData)}&size=140x140&bgcolor=ffffff&color=000000&qzone=1`);
+    setQrCodeUrlFront(`${baseUrl}${encodeURIComponent(qrData)}&size=70x70&bgcolor=ffffff&color=000000&qzone=1`);
 
     // Sequence the animations:
     // 1. The 'entering' animation (print) is 2.5s.
@@ -38,7 +58,7 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
         clearTimeout(flipTimer);
         clearTimeout(exitTimer);
     };
-  }, []);
+  }, [currentDate]);
 
   const handleAnimationEnd = () => {
     if (animationState === 'exiting') {
@@ -125,7 +145,7 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
                                     <div className="name">{userName}</div>
                                 </div>
                                 <div className="qrcode">
-                                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEX///8AAABVwtN+AAABaklEQVR42u3WMW7DMAwEUJjU0iZpA6UDoAQ0UqTNkC6QO1A6AOzY8QaKNLEzI1mJ/2R8Fz+sSCylgkdV5Y5Z7pjlzlgBwN/z5o+Z745Z7pjlzlh3zHJLzPdscc8sc8css8wyyxwh4/Lmx+bmsjlmuWOWO2cF5O5Y5m5zzHLLLHN8O2b5Y/M9Y5Y7Z7ljljtjBbJ7rpllljn+z3JHZLPMMscss8wyS8wLyL1jlplljjn+zHLLLHMs4e5Y5jlmuWOWO2cFMueOWe6Y5Q4A/h3O8sckd8wyS8wyyxwh4/Lmsjn+zDLLO+OWWWaZZZZZ5o7ZPSuQ2TPLHLPMMsscsdwxyx2zzDLLLDOsO2aZZeaO2TPLHLPMMscss8wyyxwh4/Lmh80ds8wyS8wyyxyx3DLLnLHcMcsds8wyS8wyyxwh4/Lmh80ds8wyS8wyyxyx3DLLnLHcMcsds8wyS8wyyxwh4/Lmh80ds8wyS8wyyxwnmfsL5w9U3v5dAAAAAElFTkSuQmCC" />
+                                    <img src={qrCodeUrlFront} alt="QR Code for Digital Pass" />
                                 </div>
                                 </div>
                             </div>
@@ -170,7 +190,7 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
                                 </header>
                                 <div className="contents">
                                 <div className="qrcode">
-                                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQMAAACXljzdAAAABlBMVEX///8AAABVwtN+AAABaklEQVR42u3WMW7DMAwEUJjU0iZpA6UDoAQ0UqTNkC6QO1A6AOzY8QaKNLEzI1mJ/2R8Fz+sSCylgkdV5Y5Z7pjlzlgBwN/z5o+Z745Z7pjlzlh3zHJLzPdscc8sc8css8wyyxwh4/Lmx+bmsjlmuWOWO2cF5O5Y5m5zzHLLLHN8O2b5Y/M9Y5Y7Z7ljljtjBbJ7rpllljn+z3JHZLPMMscss8wyS8wLyL1jlplljjn+zHLLLHMs4e5Y5jlmuWOWO2cFMueOWe6Y5Q4A/h3O8sckd8wyS8wyyxwh4/Lmsjn+zDLLO+OWWWaZZZZZ5o7ZPSuQ2TPLHLPMMsscsdwxyx2zzDLLLDOsO2aZZeaO2TPLHLPMMscss8wyyxwh4/Lmh80ds8wyS8wyyxyx3DLLnLHcMcsds8wyS8wyyxwh4/Lmh80ds8wyS8wyyxyx3DLLnLHcMcsds8wyS8wyyxwh4/Lmh80ds8wyS8wyyxwnmfsL5w9U3v5dAAAAAElFTkSuQmCC" />
+                                    <img src={qrCodeUrlBack} alt="QR Code for Digital Pass" />
                                 </div>
                                 </div>
                             </div>

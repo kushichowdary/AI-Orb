@@ -149,7 +149,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
         <p className="text-gray-400 mt-2"> AI Assistant </p>
       </div>
 
-      <div className="bg-transparent backdrop-blur-sm border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-8 transition-all duration-500 animate-auth-glow">
+      <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-8 transition-all duration-500 animate-auth-glow">
         <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
         
         {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}
