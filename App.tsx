@@ -14,6 +14,23 @@ import { playStopSound } from './utils/audioCues';
 
 type PostAuthState = 'initial' | 'showingPass' | 'showingOrb';
 
+/**
+ * A small, single-use component to display a personalized welcome message.
+ */
+const WelcomeTitle: React.FC = () => {
+  const name = localStorage.getItem('jarvis-user-name') || 'Agent';
+
+  return (
+    <div className="text-center">
+      <h2 className="font-jarvis text-4xl md:text-5xl font-bold text-white tracking-wider">
+        Welcome, <span className="text-lime-400">{name}</span>
+      </h2>
+      <p className="text-gray-400 mt-2">Initializing Digital Pass...</p>
+    </div>
+  );
+};
+
+
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [postAuthState, setPostAuthState] = useState<PostAuthState>('initial');
@@ -65,6 +82,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('jarvis-session');
+    localStorage.removeItem('jarvis-user-name');
     stopSession(); // Ensure the AI session is terminated on logout
     setIsAuthenticated(false);
     setPostAuthState('initial'); // Reset the flow
@@ -86,7 +104,12 @@ const App: React.FC = () => {
       {isAuthenticated ? (
         <>
           {postAuthState === 'showingPass' && (
-            <Card onExitAnimationComplete={() => setPostAuthState('showingOrb')} />
+             <div className="relative w-full h-full">
+                <div className="absolute top-[25%] left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
+                    <WelcomeTitle />
+                </div>
+                <Card onExitAnimationComplete={() => setPostAuthState('showingOrb')} />
+            </div>
           )}
 
           {postAuthState === 'showingOrb' && (
@@ -94,7 +117,7 @@ const App: React.FC = () => {
               <Header onLogout={handleLogout} />
               
               {/* Main content area that grows and centers content */}
-              <div className="flex-1 w-full flex flex-col items-center justify-center p-4 overflow-hidden">
+              <div className="flex-1 w-full flex flex-col items-center justify-around p-4 overflow-hidden">
                 {/* Responsive container for the orb to maintain its aspect ratio */}
                 <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
                     <InteractiveOrb
@@ -130,7 +153,9 @@ const App: React.FC = () => {
           )}
         </>
       ) : (
-        <AuthPage onLoginSuccess={handleLoginSuccess} />
+        <div className="w-full h-full flex items-center justify-center">
+            <AuthPage onLoginSuccess={handleLoginSuccess} />
+        </div>
       )}
     </main>
   );

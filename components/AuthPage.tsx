@@ -1,3 +1,4 @@
+
 import React, { useState, FormEvent } from 'react';
 
 type AuthMode = 'login' | 'signup' | 'forgotPassword';
@@ -13,6 +14,7 @@ interface AuthPageProps {
  */
 export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
         if (authMode === 'login') {
           const user = users.find((u: any) => u.email === email);
           if (user && user.passwordHash === hashPassword(password)) {
+            localStorage.setItem('jarvis-user-name', user.name || '');
             onLoginSuccess();
           } else {
             setError('Invalid email or password.');
@@ -44,13 +47,15 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
         } else if (authMode === 'signup') {
           if (users.some((u: any) => u.email === email)) {
             setError('An account with this email already exists.');
+            setIsLoading(false);
             return;
           }
-          const newUser = { email, passwordHash: hashPassword(password) };
+          const newUser = { email, passwordHash: hashPassword(password), name };
           localStorage.setItem('jarvis-users', JSON.stringify([...users, newUser]));
           setMessage('Account created successfully! Please log in.');
           setAuthMode('login');
           setPassword('');
+          setName('');
         } else if (authMode === 'forgotPassword') {
             const userExists = users.some((u: any) => u.email === email);
             if (userExists) {
@@ -89,6 +94,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
 
   const renderFormFields = () => (
     <>
+      {authMode === 'signup' && (
+         <div className="relative mb-4">
+            <label htmlFor="name" className="sr-only">Full Name</label>
+            <input
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Full Name"
+            required
+            disabled={isLoading}
+            className="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+        </div>
+      )}
       <div className="relative mb-4">
         <label htmlFor="email" className="sr-only">Email</label>
         <input
@@ -121,7 +141,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   );
 
   return (
-    <div className="w-full max-w-sm mx-auto animate-fadeIn animate-float">
+    <div className="w-full max-w-sm animate-fadeIn animate-float">
       <div className="text-center mb-8">
         <h1 className="font-jarvis text-5xl font-bold text-white tracking-wider">
           J<span className="text-lime-400">A</span>RV<span className="text-lime-400">I</span>S
@@ -129,7 +149,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
         <p className="text-gray-400 mt-2"> AI Assistant </p>
       </div>
 
-      <div className="bg-black/30 backdrop-blur-sm border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-8 transition-all duration-500 animate-auth-glow">
+      <div className="bg-transparent backdrop-blur-sm border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-8 transition-all duration-500 animate-auth-glow">
         <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
         
         {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}
