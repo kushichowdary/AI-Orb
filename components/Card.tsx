@@ -42,16 +42,16 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
     setQrCodeUrlFront(`${baseUrl}${encodeURIComponent(qrData)}&size=70x70&bgcolor=ffffff&color=000000&qzone=1`);
 
     // Sequence the animations:
-    // 1. The 'entering' animation (print) is 3.5s.
+    // 1. The 'entering' animation (print) is 2.8s.
     // 2. After printing is done, trigger the flip.
     const flipTimer = setTimeout(() => {
       setIsFlipped(true);
-    }, 3500);
+    }, 2800);
 
     // 3. After flipping and holding, trigger the exit animation.
     const exitTimer = setTimeout(() => {
       setAnimationState('exiting');
-    }, 5500); // 3.5s (print) + 0.6s (flip transition) + ~1.4s (hold)
+    }, 4800); // 2.8s (print) + 0.6s (flip transition) + ~1.4s (hold)
 
     return () => {
         clearTimeout(flipTimer);
@@ -248,11 +248,11 @@ const StyledWrapper = styled.div`
   }
 
   .ticket.entering {
-    animation: print-ticket 3.5s linear forwards;
+    animation: print-ticket 2.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   }
   
   .ticket.entering .float {
-    animation: float 3s ease-in-out 3.5s infinite;
+    animation: float 3s ease-in-out 2.8s infinite;
   }
 
   .ticket.exiting {

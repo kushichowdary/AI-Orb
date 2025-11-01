@@ -60,7 +60,7 @@ const App: React.FC = () => {
   const { permissionDenied: keywordPermissionDenied } = useKeywordDetection({
     keywords: ['hey jarvis', 'jarvis'],
     onKeywordDetected: handleKeywordDetected,
-    enabled: !isSessionActive,
+    enabled: isAuthenticated && postAuthState === 'showingOrb' && !isSessionActive,
   });
 
   // Check for an existing session on component mount

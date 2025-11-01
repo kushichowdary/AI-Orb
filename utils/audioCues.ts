@@ -4,6 +4,11 @@ const getAudioContext = (): AudioContext => {
   if (!audioContext || audioContext.state === 'closed') {
     audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
+  // Resume the context if it's suspended, which can happen in browsers
+  // with strict autoplay policies until a user interaction occurs.
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
   return audioContext;
 };
 
@@ -45,56 +50,94 @@ const playSound = (
 };
 
 /**
- * Plays a futuristic "printing" sound for the digital pass.
- * Simulates a dot-matrix or thermal printer with a mechanical whir and rapid ticks.
+ * Plays a mechanical, old-style paper printer sound.
+ * This combines a low motor hum with bursts of filtered white noise to simulate a print head.
  */
 export const playPrintingSound = () => {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
-    const duration = 3.0; // Corresponds with the new, slower print animation
+    const duration = 2.8; // Match the animation duration
+    const printingDuration = duration - 0.5; // Leave time for final sounds
 
-    // 1. Mechanical hum/whirring sound (extended)
-    const humOsc = ctx.createOscillator();
-    const humGain = ctx.createGain();
-    humOsc.type = 'sawtooth';
-    humOsc.frequency.setValueAtTime(80, now);
-    humOsc.frequency.linearRampToValueAtTime(120, now + duration * 0.5);
-    humOsc.frequency.linearRampToValueAtTime(70, now + duration);
-    humGain.gain.setValueAtTime(0, now);
-    humGain.gain.linearRampToValueAtTime(0.08, now + 0.1); // fade in
-    humGain.gain.linearRampToValueAtTime(0, now + duration - 0.1); // fade out
-    humOsc.connect(humGain);
-    humGain.connect(ctx.destination);
-    humOsc.start(now);
-    humOsc.stop(now + duration);
+    // 1. Motor whir for print head movement
+    const motorGain = ctx.createGain();
+    motorGain.gain.setValueAtTime(0, now);
+    motorGain.gain.linearRampToValueAtTime(0.05, now + 0.1); // Fade in
+    motorGain.gain.setValueAtTime(0.05, now + printingDuration);
+    motorGain.gain.linearRampToValueAtTime(0, now + printingDuration + 0.1); // Fade out
+    motorGain.connect(ctx.destination);
 
-    // 2. A much more rapid series of ticks to sound like a real printer
-    const tickCount = 120; // Many more ticks for a continuous 'bzzzt' sound
-    const tickDuration = duration - 0.5;
-    for (let i = 0; i < tickCount; i++) {
-        const time = now + 0.2 + (i / tickCount) * tickDuration;
-        playSound('square', 1800 + Math.random() * 600, 0.05, 0.04, 0.002, 0.04);
+    const motorOsc = ctx.createOscillator();
+    motorOsc.type = 'sawtooth';
+    motorOsc.frequency.setValueAtTime(120, now); // Low frequency hum
+    motorOsc.connect(motorGain);
+    motorOsc.start(now);
+    motorOsc.stop(now + duration);
+
+    // 2. Printing ticks using bursts of filtered noise for a more physical sound
+    const ticksPerSecond = 30;
+    const numTicks = Math.floor(printingDuration * ticksPerSecond);
+
+    for (let i = 0; i < numTicks; i++) {
+      const startTime = now + (i / ticksPerSecond);
+      
+      const noiseSource = ctx.createBufferSource();
+      const bufferSize = Math.floor(ctx.sampleRate * 0.03);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let j = 0; j < bufferSize; j++) {
+        data[j] = Math.random() * 2 - 1; // White noise
+      }
+      noiseSource.buffer = buffer;
+      
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1500 + Math.random() * 1000;
+      filter.Q.value = 5;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.2, startTime + 0.002); // Sharp attack
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.03); // Quick decay
+      
+      noiseSource.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noiseSource.start(startTime);
     }
     
-    // 3. Final paper tear-off sound instead of a chime
-    const tearTime = now + duration - 0.1;
-    const noiseSource = ctx.createBufferSource();
-    const bufferSize = Math.floor(ctx.sampleRate * 0.15); // 0.15 seconds of white noise
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1; // Generate white noise
-    }
-    noiseSource.buffer = buffer;
+    // 3. Keep the sharp "cutter" and "tear" sounds for the end.
+    const cutTime = now + duration - 0.2;
+    const cutOsc = ctx.createOscillator();
+    const cutGain = ctx.createGain();
+    cutOsc.type = 'square';
+    cutOsc.frequency.setValueAtTime(1800, cutTime);
+    cutGain.gain.setValueAtTime(0, cutTime);
+    cutGain.gain.linearRampToValueAtTime(0.3, cutTime + 0.01);
+    cutGain.gain.exponentialRampToValueAtTime(0.001, cutTime + 0.05);
+    cutOsc.connect(cutGain);
+    cutGain.connect(ctx.destination);
+    cutOsc.start(cutTime);
+    cutOsc.stop(cutTime + 0.05);
 
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.25, tearTime);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, tearTime + 0.15);
+    const tearTime = now + duration - 0.15;
+    const tearNoiseSource = ctx.createBufferSource();
+    const tearBufferSize = Math.floor(ctx.sampleRate * 0.1);
+    const tearBuffer = ctx.createBuffer(1, tearBufferSize, ctx.sampleRate);
+    const tearData = tearBuffer.getChannelData(0);
+    for (let i = 0; i < tearBufferSize; i++) {
+      tearData[i] = Math.random() * 2 - 1;
+    }
+    tearNoiseSource.buffer = tearBuffer;
+
+    const tearGain = ctx.createGain();
+    tearGain.gain.setValueAtTime(0.2, tearTime);
+    tearGain.gain.exponentialRampToValueAtTime(0.001, tearTime + 0.1);
     
-    noiseSource.connect(noiseGain);
-    noiseGain.connect(ctx.destination);
-    noiseSource.start(tearTime);
+    tearNoiseSource.connect(tearGain);
+    tearGain.connect(ctx.destination);
+    tearNoiseSource.start(tearTime);
 
   } catch (e) {
     console.error("Error playing printing sound:", e);
