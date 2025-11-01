@@ -225,6 +225,15 @@ const StyledWrapper = styled.div`
   transform-style: preserve-3d;
   perspective: 1000px;
   
+  @keyframes pulsating-glow {
+    0%, 100% {
+      box-shadow: 0 0 12px 2px rgba(220, 255, 253, 0.6), 0 0 8px 1px rgba(184, 251, 60, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 24px 3px rgba(220, 255, 253, 0.8), 0 0 16px 2px rgba(184, 251, 60, 0.7);
+    }
+  }
+
   @keyframes print-ticket {
     from {
       /* Start translated up by its own height, making it invisible */
@@ -575,6 +584,7 @@ const StyledWrapper = styled.div`
     text-align: center;
     background: linear-gradient(to bottom, white, #dcfffd);
     color: black;
+    animation: pulsating-glow 4s ease-in-out infinite;
 
     svg,
     img {

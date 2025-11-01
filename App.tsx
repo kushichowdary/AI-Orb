@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [postAuthState, setPostAuthState] = useState<PostAuthState>('initial');
   const [language, setLanguage] = useState('English');
-  const languages = ['English', 'Spanish', 'French', 'German', 'Hindi', 'Japanese'];
+  const languages = ['English', 'Spanish', 'French', 'German', 'Hindi', 'Japanese', 'Telugu'];
   
   // The API key is securely managed by the environment.
   const apiKey = process.env.API_KEY;
