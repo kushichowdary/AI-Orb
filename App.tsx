@@ -117,9 +117,9 @@ const App: React.FC = () => {
               <Header onLogout={handleLogout} />
               
               {/* Main content area that grows and centers content */}
-              <div className="flex-1 w-full flex flex-col p-4 overflow-hidden">
+              <div className="flex-1 w-full flex flex-col p-4 overflow-hidden min-h-0">
                 {/* Orb container takes up most of the space and centers the orb */}
-                <div className="flex-1 w-full flex items-center justify-center">
+                <div className="flex-1 w-full flex items-center justify-center min-h-0">
                     <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
                         <InteractiveOrb
                             connectionState={connectionState}
@@ -132,7 +132,7 @@ const App: React.FC = () => {
                 </div>
                 
                 {/* Controls are in a container at the bottom of this flex area */}
-                <div>
+                <div className="flex-shrink-0">
                     <StatusIndicator
                         connectionState={connectionState}
                         isSpeaking={isSpeaking}
