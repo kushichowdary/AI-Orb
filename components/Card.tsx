@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { playPrintingSound } from '../utils/audioCues';
@@ -43,16 +42,16 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
     setQrCodeUrlFront(`${baseUrl}${encodeURIComponent(qrData)}&size=70x70&bgcolor=ffffff&color=000000&qzone=1`);
 
     // Sequence the animations:
-    // 1. The 'entering' animation (print) is 2.5s.
+    // 1. The 'entering' animation (print) is 3.5s.
     // 2. After printing is done, trigger the flip.
     const flipTimer = setTimeout(() => {
       setIsFlipped(true);
-    }, 2500);
+    }, 3500);
 
     // 3. After flipping and holding, trigger the exit animation.
     const exitTimer = setTimeout(() => {
       setAnimationState('exiting');
-    }, 4500); // 2.5s (print) + 0.6s (flip transition) + ~1.4s (hold)
+    }, 5500); // 3.5s (print) + 0.6s (flip transition) + ~1.4s (hold)
 
     return () => {
         clearTimeout(flipTimer);
@@ -239,25 +238,25 @@ const StyledWrapper = styled.div`
 
   @keyframes exit-ticket {
     from {
-      transform: translateY(0) scale(1);
+      transform: translateY(0) rotate(0deg) scale(1);
       opacity: 1;
     }
     to {
-      transform: translateY(110vh) scale(0.9);
+      transform: translateY(120vh) rotate(10deg) scale(0.95);
       opacity: 0;
     }
   }
 
   .ticket.entering {
-    animation: print-ticket 2.5s cubic-bezier(0.4, 0.9, 0.5, 1) forwards;
+    animation: print-ticket 3.5s linear forwards;
   }
   
   .ticket.entering .float {
-    animation: float 3s ease-in-out 2.5s infinite;
+    animation: float 3s ease-in-out 3.5s infinite;
   }
 
   .ticket.exiting {
-    animation: exit-ticket 1.2s cubic-bezier(0.6, 0.05, 0.8, 0) forwards;
+    animation: exit-ticket 1.5s cubic-bezier(0.6, 0.05, 0.8, 0.1) forwards;
   }
   
   .ticket.exiting .float {

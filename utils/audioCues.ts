@@ -1,4 +1,3 @@
-
 // Create a single AudioContext to be reused.
 let audioContext: AudioContext | null = null;
 const getAudioContext = (): AudioContext => {
@@ -47,21 +46,21 @@ const playSound = (
 
 /**
  * Plays a futuristic "printing" sound for the digital pass.
- * Combines a low hum with a series of high-frequency ticks and a final chime.
+ * Simulates a dot-matrix or thermal printer with a mechanical whir and rapid ticks.
  */
 export const playPrintingSound = () => {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
-    const duration = 2.2;
+    const duration = 3.0; // Corresponds with the new, slower print animation
 
-    // 1. Mechanical hum/whirring sound
+    // 1. Mechanical hum/whirring sound (extended)
     const humOsc = ctx.createOscillator();
     const humGain = ctx.createGain();
     humOsc.type = 'sawtooth';
     humOsc.frequency.setValueAtTime(80, now);
     humOsc.frequency.linearRampToValueAtTime(120, now + duration * 0.5);
-    humOsc.frequency.linearRampToValueAtTime(60, now + duration);
+    humOsc.frequency.linearRampToValueAtTime(70, now + duration);
     humGain.gain.setValueAtTime(0, now);
     humGain.gain.linearRampToValueAtTime(0.08, now + 0.1); // fade in
     humGain.gain.linearRampToValueAtTime(0, now + duration - 0.1); // fade out
@@ -70,19 +69,32 @@ export const playPrintingSound = () => {
     humOsc.start(now);
     humOsc.stop(now + duration);
 
-    // 2. Series of rapid printing ticks
-    for (let i = 0; i < 18; i++) {
-        const time = now + 0.2 + i * 0.1;
-        playSound('square', 1500 + Math.random() * 500, 0.05, 0.05, 0.005, 0.04);
+    // 2. A much more rapid series of ticks to sound like a real printer
+    const tickCount = 120; // Many more ticks for a continuous 'bzzzt' sound
+    const tickDuration = duration - 0.5;
+    for (let i = 0; i < tickCount; i++) {
+        const time = now + 0.2 + (i / tickCount) * tickDuration;
+        playSound('square', 1800 + Math.random() * 600, 0.05, 0.04, 0.002, 0.04);
     }
     
-    // 3. Final confirmation chime
-    const delayInMs = (duration - 0.3) * 1000;
-    setTimeout(() => {
-        playSound('sine', 1046.5, 0.3, 0.2, 0.01, 0.2);
-        setTimeout(() => playSound('sine', 1396.9, 0.3, 0.2, 0.01, 0.2), 80);
-    }, delayInMs);
+    // 3. Final paper tear-off sound instead of a chime
+    const tearTime = now + duration - 0.1;
+    const noiseSource = ctx.createBufferSource();
+    const bufferSize = Math.floor(ctx.sampleRate * 0.15); // 0.15 seconds of white noise
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1; // Generate white noise
+    }
+    noiseSource.buffer = buffer;
 
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.25, tearTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, tearTime + 0.15);
+    
+    noiseSource.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseSource.start(tearTime);
 
   } catch (e) {
     console.error("Error playing printing sound:", e);
