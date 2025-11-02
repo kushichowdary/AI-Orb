@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { AuthPage } from './components/AuthPage';
@@ -12,7 +11,6 @@ import { Controls } from './components/Controls';
 import { Footer } from './components/Footer';
 import { playStopSound } from './utils/audioCues';
 import { SystemCoreTransition } from './components/SystemCoreTransition';
-import { Conversation } from './components/Conversation';
 
 type PostAuthState = 'initial' | 'showingPass' | 'bootingSequence' | 'showingOrb';
 
@@ -49,9 +47,6 @@ const App: React.FC = () => {
       error, 
       isSpeaking, 
       isUserSpeaking,
-      transcriptionHistory,
-      currentUserTranscription,
-      currentModelTranscription,
   } = useGeminiLive(apiKey, language);
 
   const isSessionActive = connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.CONNECTED;
@@ -130,16 +125,6 @@ const App: React.FC = () => {
                 {/* Container for conversation and orb, with relative positioning */}
                 <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 relative">
                   
-                  {/* Conversation log, positioned at the top */}
-                  <div className="absolute top-0 left-0 right-0 h-1/3 md:h-2/5 px-4">
-                    <Conversation 
-                      history={transcriptionHistory}
-                      currentUserLine={currentUserTranscription}
-                      currentModelLine={currentModelTranscription}
-                      isSessionActive={isSessionActive}
-                    />
-                  </div>
-
                   {/* Orb container, centered in the remaining space */}
                   <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
                       <InteractiveOrb

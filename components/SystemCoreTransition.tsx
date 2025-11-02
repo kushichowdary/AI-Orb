@@ -30,14 +30,16 @@ export const SystemCoreTransition: React.FC<SystemCoreTransitionProps> = ({ onCo
 
     // Schedule each log line to appear, starting after the initial animations.
     logSequence.forEach((line, index) => {
-      const timeout = setTimeout(() => {
+      // FIX: Use window.setTimeout to ensure the browser's implementation is used, which returns a number.
+      const timeout = window.setTimeout(() => {
         setDisplayedLines(prev => [...prev, line]);
       }, 1000 + index * LINE_INTERVAL);
       timeouts.push(timeout);
     });
 
     // Schedule the final welcome message.
-    const finalMessageTimer = setTimeout(() => {
+    // FIX: Use window.setTimeout to ensure the browser's implementation is used, which returns a number.
+    const finalMessageTimer = window.setTimeout(() => {
       const userName = localStorage.getItem('jarvis-user-name')?.toUpperCase() || 'AGENT';
       const finalLine = `> WELCOME, ${userName}.`;
       setDisplayedLines(prev => [...prev, finalLine]);
@@ -46,18 +48,21 @@ export const SystemCoreTransition: React.FC<SystemCoreTransitionProps> = ({ onCo
     timeouts.push(finalMessageTimer);
 
     // Schedule the fade-out effect to begin before the sequence ends.
-    const fadeTimer = setTimeout(() => {
+    // FIX: Use window.setTimeout to ensure the browser's implementation is used, which returns a number.
+    const fadeTimer = window.setTimeout(() => {
       setIsFading(true);
     }, FADE_OUT_START);
     timeouts.push(fadeTimer);
 
     // Schedule the final transition to the main app.
-    const completeTimer = setTimeout(onComplete, TOTAL_DURATION);
+    // FIX: Use window.setTimeout to ensure the browser's implementation is used, which returns a number.
+    const completeTimer = window.setTimeout(onComplete, TOTAL_DURATION);
     timeouts.push(completeTimer);
 
     // Cleanup function to clear all timers and stop sounds on component unmount.
     return () => {
-      timeouts.forEach(clearTimeout);
+      // FIX: Use window.clearTimeout to match window.setTimeout.
+      timeouts.forEach(window.clearTimeout);
       stopSound();
     };
   }, [onComplete]);
