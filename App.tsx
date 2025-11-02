@@ -118,7 +118,7 @@ const App: React.FC = () => {
           )}
 
           {postAuthState === 'showingOrb' && (
-            <div className="w-full h-screen flex flex-col animate-fadeIn">
+            <div className="w-full h-screen flex flex-col animate-fadeIn nebula-background">
               <Header onLogout={handleLogout} />
               
               {/* Main content area that grows and centers content */}

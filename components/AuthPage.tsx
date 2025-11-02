@@ -20,6 +20,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   // Simple Base64 "hashing" for simulation purposes.
   // In a real application, NEVER do this. Use a secure, salted hashing algorithm like bcrypt.
@@ -127,14 +128,33 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
           <label htmlFor="password" className="sr-only">Password</label>
           <input
             id="password"
-            type="password"
+            type={isPasswordVisible ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             required
             disabled={isLoading}
-            className="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed pr-10"
           />
+           <button
+            type="button"
+            onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+            disabled={isLoading}
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-lime-400 focus:outline-none focus:text-lime-400 transition-colors disabled:opacity-50"
+            aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
+          >
+            {isPasswordVisible ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074L3.707 2.293zM10 12a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                <path d="M2 10s3.939 4 8 4 8-4 8-4-3.939-4-8-4-8 4-8 4zm10 0a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
         </div>
       )}
     </>

@@ -247,12 +247,15 @@ const StyledWrapper = styled.div`
 
   @keyframes exit-ticket {
     from {
-      transform: translateY(0) rotate(0deg) scale(1);
+      transform: translateY(0) rotateX(0deg) rotateZ(0deg) scale(1);
       opacity: 1;
+      filter: blur(0);
     }
     to {
-      transform: translateY(120vh) rotate(10deg) scale(0.95);
+      /* Fall far off-screen, tumbling, shrinking, and blurring to simulate speed and distance. */
+      transform: translateY(160vh) rotateX(50deg) rotateZ(-20deg) scale(0.4);
       opacity: 0;
+      filter: blur(5px);
     }
   }
 
@@ -265,7 +268,8 @@ const StyledWrapper = styled.div`
   }
 
   .ticket.exiting {
-    animation: exit-ticket 1.5s cubic-bezier(0.6, 0.05, 0.8, 0.1) forwards;
+    /* A custom ease-in curve that simulates rapid acceleration. */
+    animation: exit-ticket 1.4s cubic-bezier(0.6, 0.04, 0.98, 0.335) forwards;
   }
   
   .ticket.exiting .float {
