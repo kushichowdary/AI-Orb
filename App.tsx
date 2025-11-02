@@ -12,6 +12,7 @@ import { Controls } from './components/Controls';
 import { Footer } from './components/Footer';
 import { playStopSound } from './utils/audioCues';
 import { SystemCoreTransition } from './components/SystemCoreTransition';
+import { Conversation } from './components/Conversation';
 
 type PostAuthState = 'initial' | 'showingPass' | 'bootingSequence' | 'showingOrb';
 
@@ -47,7 +48,10 @@ const App: React.FC = () => {
       stopSession, 
       error, 
       isSpeaking, 
-      isUserSpeaking 
+      isUserSpeaking,
+      transcriptionHistory,
+      currentUserTranscription,
+      currentModelTranscription,
   } = useGeminiLive(apiKey, language);
 
   const isSessionActive = connectionState === ConnectionState.CONNECTING || connectionState === ConnectionState.CONNECTED;
@@ -123,17 +127,29 @@ const App: React.FC = () => {
               
               {/* Main content area that grows and centers content */}
               <div className="flex-1 w-full flex flex-col p-4 overflow-hidden min-h-0">
-                {/* Orb container takes up most of the space and centers the orb */}
-                <div className="flex-1 w-full flex items-center justify-center min-h-0">
-                    <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
-                        <InteractiveOrb
-                            connectionState={connectionState}
-                            isSpeaking={isSpeaking}
-                            isUserSpeaking={isUserSpeaking}
-                            onClick={handleOrbClick}
-                            disabled={isSessionActive}
-                        />
-                    </div>
+                {/* Container for conversation and orb, with relative positioning */}
+                <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0 relative">
+                  
+                  {/* Conversation log, positioned at the top */}
+                  <div className="absolute top-0 left-0 right-0 h-1/3 md:h-2/5 px-4">
+                    <Conversation 
+                      history={transcriptionHistory}
+                      currentUserLine={currentUserTranscription}
+                      currentModelLine={currentModelTranscription}
+                      isSessionActive={isSessionActive}
+                    />
+                  </div>
+
+                  {/* Orb container, centered in the remaining space */}
+                  <div className="w-full max-w-xs sm:max-w-sm md:max-w-md aspect-square">
+                      <InteractiveOrb
+                          connectionState={connectionState}
+                          isSpeaking={isSpeaking}
+                          isUserSpeaking={isUserSpeaking}
+                          onClick={handleOrbClick}
+                          disabled={isSessionActive}
+                      />
+                  </div>
                 </div>
                 
                 {/* Controls are in a container at the bottom of this flex area */}

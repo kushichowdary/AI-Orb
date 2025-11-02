@@ -52,6 +52,11 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
   const [isSpeaking, setIsSpeaking] = useState(false); // AI is speaking
   const [isUserSpeaking, setIsUserSpeaking] = useState(false); // User is speaking
 
+  // State for conversation transcriptions.
+  const [transcriptionHistory, setTranscriptionHistory] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
+  const [currentUserTranscription, setCurrentUserTranscription] = useState('');
+  const [currentModelTranscription, setCurrentModelTranscription] = useState('');
+
   // Refs to hold onto session objects and browser APIs that don't need to trigger re-renders.
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -60,6 +65,8 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const userSpeakingTimeoutRef = useRef<number | null>(null);
+  const currentUserTranscriptionRef = useRef('');
+  const currentModelTranscriptionRef = useRef('');
 
   // Manages the queue of audio chunks coming from the API to ensure gapless playback.
   const audioPlaybackStateRef = useRef({
@@ -114,6 +121,13 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
     setIsSpeaking(false);
     setIsUserSpeaking(false);
     setConnectionState(ConnectionState.DISCONNECTED);
+    
+    // 7. Clear transcription data.
+    setTranscriptionHistory([]);
+    setCurrentUserTranscription('');
+    setCurrentModelTranscription('');
+    currentUserTranscriptionRef.current = '';
+    currentModelTranscriptionRef.current = '';
   }, []);
 
   /**
@@ -138,6 +152,7 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
         playConnectingSound();
         setConnectionState(ConnectionState.CONNECTING);
         setError(null);
+        setTranscriptionHistory([]); // Clear history on new session start
     }
 
     try {
@@ -166,6 +181,8 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
           systemInstruction: createSystemInstruction(language),
+          inputAudioTranscription: {}, // Enable user transcription
+          outputAudioTranscription: {}, // Enable model transcription
         },
         callbacks: {
           onopen: () => {
@@ -211,6 +228,35 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
               setIsSpeaking(false);
             }
 
+            // Handle transcriptions
+            if (message.serverContent?.inputTranscription) {
+              currentUserTranscriptionRef.current += message.serverContent.inputTranscription.text;
+              setCurrentUserTranscription(currentUserTranscriptionRef.current);
+            }
+            if (message.serverContent?.outputTranscription) {
+              currentModelTranscriptionRef.current += message.serverContent.outputTranscription.text;
+              setCurrentModelTranscription(currentModelTranscriptionRef.current);
+            }
+
+            if (message.serverContent?.turnComplete) {
+              const fullInput = currentUserTranscriptionRef.current.trim();
+              const fullOutput = currentModelTranscriptionRef.current.trim();
+      
+              if (fullInput) {
+                  setTranscriptionHistory(prev => [...prev, { role: 'user', text: fullInput }]);
+              }
+              if (fullOutput) {
+                  setTranscriptionHistory(prev => [...prev, { role: 'model', text: fullOutput }]);
+              }
+      
+              // Reset for the next turn
+              currentUserTranscriptionRef.current = '';
+              currentModelTranscriptionRef.current = '';
+              setCurrentUserTranscription('');
+              setCurrentModelTranscription('');
+            }
+            
+            // Handle audio playback
             const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (audioData) {
               if (!isSpeaking) setIsSpeaking(true);
@@ -294,5 +340,15 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
     }
   }, [apiKey, connectionState, language, stopSession]);
   
-  return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
+  return { 
+    connectionState, 
+    startSession, 
+    stopSession, 
+    error, 
+    isSpeaking, 
+    isUserSpeaking,
+    transcriptionHistory,
+    currentUserTranscription,
+    currentModelTranscription
+  };
 };
