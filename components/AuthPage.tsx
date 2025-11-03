@@ -72,7 +72,9 @@ export const AuthPage: React.FC = () => {
             setAuthMode('login');
         }
     } catch (e) {
-        const authError = e as AuthError;
+        // FIX: The imported `AuthError` type appears to lack the `code` property in this environment.
+        // Casting to a structural type with a `code` property to resolve the type error.
+        const authError = e as { code: string };
         setError(getFirebaseErrorMessage(authError.code));
     } finally {
         setIsLoading(false);

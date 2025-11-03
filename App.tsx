@@ -68,11 +68,10 @@ const App: React.FC = () => {
 
   // Centralized effect to manage authentication state and UI flow.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setIsAuthenticated(true);
-        localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
-
+        
         // Definitive check for a new user, preventing race conditions.
         // A user is considered "new" if their account was created within the last 5 seconds.
         // This robustly identifies a fresh sign-up.
@@ -81,11 +80,19 @@ const App: React.FC = () => {
         const isNewUser = (lastSignInTime - creationTime) < 5000;
 
         if (isNewUser) {
+          // For a new user, the displayName might not be immediately available on the user object
+          // from the onAuthStateChanged event. We must reload the user to get the fresh data
+          // that was set during the sign-up process.
+          await user.reload();
           setPostAuthState('showingPass');
         } else {
           // For existing users logging in or returning to the app, show the boot sequence.
           setPostAuthState('bootingSequence');
         }
+        
+        // After the potential reload for new users, user.displayName will be up-to-date.
+        localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
+
       } else {
         setIsAuthenticated(false);
         localStorage.removeItem('jarvis-user-name');
