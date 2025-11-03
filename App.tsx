@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './utils/firebase';
 import { Header } from './components/Header';
 import { AuthPage } from './components/AuthPage';
 import Card from './components/Card';
@@ -33,11 +36,11 @@ const WelcomeTitle: React.FC = () => {
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [postAuthState, setPostAuthState] = useState<PostAuthState>('initial');
   const [language, setLanguage] = useState('English');
   const languages = ['English', 'Spanish', 'French', 'German', 'Hindi', 'Japanese', 'Telugu'];
   
-  // The API key is securely managed by the environment.
   const apiKey = process.env.API_KEY;
 
   const { 
@@ -63,29 +66,41 @@ const App: React.FC = () => {
     enabled: isAuthenticated && postAuthState === 'showingOrb' && !isSessionActive,
   });
 
-  // Check for an existing session on component mount
+  // Centralized effect to manage authentication state and UI flow.
   useEffect(() => {
-    const sessionActive = localStorage.getItem('jarvis-session') === 'true';
-    if (sessionActive) {
-      setIsAuthenticated(true);
-      // If session already exists, skip the pass animation and go straight to the orb.
-      setPostAuthState('showingOrb');
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+        localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
+
+        // Definitive check for a new user, preventing race conditions.
+        // A user is considered "new" if their account was created within the last 5 seconds.
+        // This robustly identifies a fresh sign-up.
+        const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
+        const lastSignInTime = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+        const isNewUser = (lastSignInTime - creationTime) < 5000;
+
+        if (isNewUser) {
+          setPostAuthState('showingPass');
+        } else {
+          // For existing users logging in or returning to the app, show the boot sequence.
+          setPostAuthState('bootingSequence');
+        }
+      } else {
+        setIsAuthenticated(false);
+        localStorage.removeItem('jarvis-user-name');
+        setPostAuthState('initial'); // Reset flow on logout
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const handleLoginSuccess = () => {
-    localStorage.setItem('jarvis-session', 'true');
-    setIsAuthenticated(true);
-    // Start the post-login sequence by showing the pass animation.
-    setPostAuthState('showingPass');
-  };
 
   const handleLogout = () => {
-    localStorage.removeItem('jarvis-session');
-    localStorage.removeItem('jarvis-user-name');
     stopSession(); // Ensure the AI session is terminated on logout
-    setIsAuthenticated(false);
-    setPostAuthState('initial'); // Reset the flow
+    signOut(auth).catch(error => console.error("Logout error:", error));
   };
   
   const handleOrbClick = () => {
@@ -98,6 +113,10 @@ const App: React.FC = () => {
     playStopSound();
     stopSession();
   };
+  
+  if (isAuthLoading) {
+    return <div className="h-screen w-full flex items-center justify-center bg-black" aria-label="Loading application"></div>;
+  }
 
   return (
     <main className="h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-black text-white">
@@ -170,7 +189,7 @@ const App: React.FC = () => {
               ))}
             </div>
             <div className="relative">
-              <AuthPage onLoginSuccess={handleLoginSuccess} />
+              <AuthPage />
             </div>
         </div>
       )}

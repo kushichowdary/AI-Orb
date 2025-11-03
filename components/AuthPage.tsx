@@ -1,18 +1,40 @@
 
 import React, { useState, FormEvent } from 'react';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    sendPasswordResetEmail,
+    updateProfile,
+    AuthError
+} from 'firebase/auth';
+import { auth } from '../utils/firebase';
 
 type AuthMode = 'login' | 'signup' | 'forgotPassword';
 
-interface AuthPageProps {
-  onLoginSuccess: () => void;
+const getFirebaseErrorMessage = (errorCode: string): string => {
+    switch (errorCode) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+            return 'Invalid email or password.';
+        case 'auth/email-already-in-use':
+            return 'An account with this email already exists.';
+        case 'auth/weak-password':
+            return 'Password is too weak. It should be at least 6 characters.';
+        case 'auth/invalid-email':
+            return 'Please enter a valid email address.';
+        case 'auth/network-request-failed':
+            return 'Network error. Please check your connection.';
+        default:
+            return 'An unexpected error occurred. Please try again.';
+    }
 }
 
 /**
- * A full-featured, animated authentication page.
- * Handles user login, registration, and password recovery simulation.
- * All styling is designed to match the futuristic "JARVIS" theme.
+ * A full-featured, animated authentication page using Firebase.
+ * Handles user login, registration, and password recovery.
  */
-export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
+export const AuthPage: React.FC = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -22,58 +44,39 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
-  // Simple Base64 "hashing" for simulation purposes.
-  // In a real application, NEVER do this. Use a secure, salted hashing algorithm like bcrypt.
-  const hashPassword = (pass: string) => btoa(pass);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
     setMessage(null);
     setIsLoading(true);
 
-    // Simulate network delay for a more realistic feel
-    setTimeout(() => {
-      try {
-        const users = JSON.parse(localStorage.getItem('jarvis-users') || '[]');
-
+    try {
         if (authMode === 'login') {
-          const user = users.find((u: any) => u.email === email);
-          if (user && user.passwordHash === hashPassword(password)) {
-            localStorage.setItem('jarvis-user-name', user.name || '');
-            onLoginSuccess();
-          } else {
-            setError('Invalid email or password.');
-          }
+            await signInWithEmailAndPassword(auth, email, password);
+            // After successful login, onAuthStateChanged in App.tsx will handle the navigation.
         } else if (authMode === 'signup') {
-          if (users.some((u: any) => u.email === email)) {
-            setError('An account with this email already exists.');
-            setIsLoading(false);
-            return;
-          }
-          const newUser = { email, passwordHash: hashPassword(password), name };
-          localStorage.setItem('jarvis-users', JSON.stringify([...users, newUser]));
-          setMessage('Account created successfully! Please log in.');
-          setAuthMode('login');
-          setPassword('');
-          setName('');
-        } else if (authMode === 'forgotPassword') {
-            const userExists = users.some((u: any) => u.email === email);
-            if (userExists) {
-                setMessage('If an account with this email exists, a password reset link has been sent.');
-            } else {
-                // Show the same message for security reasons (to not reveal existing emails)
-                setMessage('If an account with this email exists, a password reset link has been sent.');
+            if (!name) {
+                setError('Please enter your full name.');
+                setIsLoading(false);
+                return;
             }
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(userCredential.user, { displayName: name });
+            // After signup, user is automatically logged in.
+            // onAuthStateChanged in App.tsx will detect this as a new user and handle navigation.
+
+        } else if (authMode === 'forgotPassword') {
+            await sendPasswordResetEmail(auth, email);
+            setMessage('If an account with this email exists, a password reset link has been sent.');
             setAuthMode('login');
         }
-      } catch (e) {
-        setError("An unexpected error occurred.");
-        console.error("Auth error:", e);
-      } finally {
+    } catch (e) {
+        const authError = e as AuthError;
+        setError(getFirebaseErrorMessage(authError.code));
+    } finally {
         setIsLoading(false);
-      }
-    }, 1000); // 1-second delay
+    }
   };
 
   const getTitle = () => {
@@ -190,12 +193,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
         <div className="text-center mt-6">
           {authMode === 'login' ? (
              <>
-                <button onClick={() => { setAuthMode('forgotPassword'); setError(null); }} className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                <button onClick={() => { setAuthMode('forgotPassword'); setError(null); setMessage(null); }} className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
                     Forgot Password?
                 </button>
                 <p className="text-sm text-gray-500 mt-2">
                     Don't have an account?{' '}
-                    <button onClick={() => { setAuthMode('signup'); setError(null); }} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                    <button onClick={() => { setAuthMode('signup'); setError(null); setMessage(null);}} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
                         Sign up
                     </button>
                 </p>
@@ -203,7 +206,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLoginSuccess }) => {
           ) : (
             <p className="text-sm text-gray-500">
               Remember your password?{' '}
-              <button onClick={() => { setAuthMode('login'); setError(null); }} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+              <button onClick={() => { setAuthMode('login'); setError(null); setMessage(null); }} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
                 Log In
               </button>
             </p>
