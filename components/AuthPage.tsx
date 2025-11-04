@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent } from 'react';
 import { 
     createUserWithEmailAndPassword, 
@@ -168,13 +167,13 @@ export const AuthPage: React.FC = () => {
   return (
     <div className="w-full max-w-sm animate-fadeIn animate-float">
       <div className="text-center mb-8">
-        <h1 className="font-jarvis text-5xl font-bold text-white tracking-wider">
+        <h1 className="font-jarvis text-4xl sm:text-5xl font-bold text-white tracking-wider">
           J<span className="text-lime-400">A</span>RV<span className="text-lime-400">I</span>S
         </h1>
         <p className="text-gray-400 mt-2"> AI Assistant </p>
       </div>
 
-      <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-8 transition-all duration-500 animate-auth-glow">
+      <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-6 sm:p-8 transition-all duration-500 animate-auth-glow">
         <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
         
         {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}

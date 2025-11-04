@@ -282,7 +282,8 @@ const StyledWrapper = styled.div`
     border-radius: 100px;
     padding: 0 12px 0 10px;
     height: 36px;
-    min-width: 350px;
+    width: 90vw;
+    max-width: 350px;
     position: relative;
     top: -140px;
     z-index: 5;
@@ -580,7 +581,8 @@ const StyledWrapper = styled.div`
   .ticket-body {
     display: block;
     position: relative;
-    width: 320px;
+    width: 90vw;
+    max-width: 320px;
     margin-bottom: 20px;
     padding: 0;
     border-radius: 7px 7px 0px 0px;

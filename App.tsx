@@ -72,26 +72,28 @@ const App: React.FC = () => {
       if (user) {
         setIsAuthenticated(true);
         
-        // Definitive check for a new user, preventing race conditions.
-        // A user is considered "new" if their account was created within the last 5 seconds.
-        // This robustly identifies a fresh sign-up.
         const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
         const lastSignInTime = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
+        // A new user is detected if their last sign-in is within a few seconds of their creation time.
         const isNewUser = (lastSignInTime - creationTime) < 5000;
 
         if (isNewUser) {
-          // For a new user, the displayName might not be immediately available on the user object
-          // from the onAuthStateChanged event. We must reload the user to get the fresh data
-          // that was set during the sign-up process.
+          // For a new user, the displayName set during signup might not be immediately available.
+          // We must reload the user object to fetch the latest profile from Firebase.
           await user.reload();
+          
+          // Now that the profile is updated, store the correct name.
+          localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
+          
+          // Only new users should see the digital pass animation.
           setPostAuthState('showingPass');
         } else {
-          // For existing users logging in or returning to the app, show the boot sequence.
+          // For existing users who are logging in, just store their name.
+          localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
+          
+          // They will see the system boot sequence, not the digital pass.
           setPostAuthState('bootingSequence');
         }
-        
-        // After the potential reload for new users, user.displayName will be up-to-date.
-        localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
 
       } else {
         setIsAuthenticated(false);

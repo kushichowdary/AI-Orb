@@ -12,7 +12,7 @@ interface HeaderProps {
  */
 export const Header: React.FC<HeaderProps> = ({ onLogout }) => (
   <header className="p-4 md:p-6 w-full flex items-center justify-end relative z-20">
-    <h1 className="font-jarvis text-3xl font-bold text-white tracking-wider text-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none animate-text-glow">
+    <h1 className="font-jarvis text-2xl sm:text-3xl font-bold text-white tracking-wider text-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none animate-text-glow">
       J<span className="text-lime-400">A</span>RV<span className="text-lime-400">I</span>S
     </h1>
     <button

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ConnectionState } from '../types';
 
@@ -57,8 +56,8 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   const textColor = error || (isIdle && keywordPermissionDenied) ? 'text-red-400 font-medium' : 'text-gray-400';
 
   return (
-    <div className="h-20 flex items-center justify-center z-10 text-center">
-      <p className={`transition-opacity duration-300 text-base ${textColor}`}>
+    <div className="h-16 md:h-20 flex items-center justify-center z-10 text-center px-2">
+      <p className={`transition-opacity duration-300 text-sm sm:text-base ${textColor}`}>
         {statusText}
       </p>
     </div>

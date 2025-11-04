@@ -44,7 +44,7 @@ export const Controls: React.FC<ControlsProps> = ({
         <button
           onClick={onStopSession}
           aria-label="Stop Session"
-          className="bg-gray-200 text-gray-900 font-semibold px-8 py-3 rounded-full shadow-lg 
+          className="bg-gray-200 text-gray-900 font-semibold px-6 py-2.5 sm:px-8 sm:py-3 rounded-full shadow-lg 
                     border border-transparent
                     hover:bg-red-500 hover:text-white hover:shadow-xl hover:shadow-red-500/20
                     focus:outline-none focus:ring-4 focus:ring-red-500/50 
@@ -59,7 +59,7 @@ export const Controls: React.FC<ControlsProps> = ({
         <button
           onClick={onRetry}
           aria-label="Retry Connection"
-          className="bg-lime-400 text-black font-semibold px-8 py-3 rounded-full shadow-lg
+          className="bg-lime-400 text-black font-semibold px-6 py-2.5 sm:px-8 sm:py-3 rounded-full shadow-lg
                     border border-transparent
                     hover:bg-lime-300 hover:shadow-xl hover:shadow-lime-400/20
                     focus:outline-none focus:ring-4 focus:ring-lime-400/50 
