@@ -1,4 +1,5 @@
 
+
 import React, { useState, FormEvent } from 'react';
 // FIX: Use v8 namespaced API instead of v9 modular imports.
 /*
@@ -47,6 +48,7 @@ export const AuthPage: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
 
   const handleSubmit = async (event: FormEvent) => {
@@ -81,7 +83,7 @@ export const AuthPage: React.FC = () => {
             // FIX: Use v8 namespaced auth.sendPasswordResetEmail
             await auth.sendPasswordResetEmail(email);
             setMessage('If an account with this email exists, a password reset link has been sent.');
-            setAuthMode('login');
+            setResetEmailSent(true);
         }
     } catch (e) {
         // FIX: The imported `AuthError` type appears to lack the `code` property in this environment.
@@ -91,6 +93,17 @@ export const AuthPage: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
+  };
+
+  const handleModeChange = (newMode: AuthMode) => {
+    setAuthMode(newMode);
+    setError(null);
+    setMessage(null);
+    setResetEmailSent(false);
+    // Clear form fields for a clean state
+    setName('');
+    setEmail('');
+    setPassword('');
   };
 
   const getTitle = () => {
@@ -185,40 +198,54 @@ export const AuthPage: React.FC = () => {
         {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}
         {message && <p className="text-lime-400 text-center text-sm mb-4">{message}</p>}
 
-        <form onSubmit={handleSubmit}>
-          {renderFormFields()}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-lime-400 text-black font-bold py-3 px-4 rounded-md hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 animate-subtle-glow disabled:bg-lime-400/50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-100"
-          >
-            {getButtonText()}
-          </button>
-        </form>
-
-        <div className="text-center mt-6">
-          {authMode === 'login' ? (
-             <>
-                <button onClick={() => { setAuthMode('forgotPassword'); setError(null); setMessage(null); }} className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
-                    Forgot Password?
+        {authMode === 'forgotPassword' && resetEmailSent ? (
+            <div>
+                 <p className="text-center text-gray-300 mb-6">Please check your inbox and follow the instructions to reset your password.</p>
+                 <button
+                    onClick={() => handleModeChange('login')}
+                    className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 transform hover:scale-105 active:scale-100"
+                >
+                    Back to Login
                 </button>
-                <p className="text-sm text-gray-500 mt-2">
-                    Don't have an account?{' '}
-                    <button onClick={() => { setAuthMode('signup'); setError(null); setMessage(null);}} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
-                        Sign up
+            </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {renderFormFields()}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-lime-400 text-black font-bold py-3 px-4 rounded-md hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 animate-subtle-glow disabled:bg-lime-400/50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-100"
+            >
+              {getButtonText()}
+            </button>
+          </form>
+        )}
+
+        {!(authMode === 'forgotPassword' && resetEmailSent) && (
+            <div className="text-center mt-6">
+            {authMode === 'login' ? (
+                <>
+                    <button onClick={() => handleModeChange('forgotPassword')} className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                        Forgot Password?
                     </button>
+                    <p className="text-sm text-gray-500 mt-2">
+                        Don't have an account?{' '}
+                        <button onClick={() => handleModeChange('signup')} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                            Sign up
+                        </button>
+                    </p>
+                </>
+            ) : (
+                <p className="text-sm text-gray-500">
+                {authMode === 'signup' ? 'Already have an account?' : 'Remember your password?'}{' '}
+                <button onClick={() => handleModeChange('login')} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                    Log In
+                </button>
                 </p>
-             </>
-          ) : (
-            <p className="text-sm text-gray-500">
-              Remember your password?{' '}
-              <button onClick={() => { setAuthMode('login'); setError(null); setMessage(null); }} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
-                Log In
-              </button>
-            </p>
-          )}
-        </div>
+            )}
+            </div>
+        )}
       </div>
     </div>
   );

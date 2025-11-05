@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Use v8 namespaced API instead of v9 modular imports
 // import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -196,14 +197,14 @@ const App: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center relative">
+        <div className="w-full h-full flex flex-col items-center justify-start pt-24 relative">
             <div id="particle-container">
               {Array.from({ length: 30 }).map((_, i) => (
                 <span key={i} className="particle" />
               ))}
             </div>
 
-            <div className="text-center mb-8 z-10 animate-fadeIn">
+            <div className="text-center mb-8 z-10 animate-fadeIn transform translate-x-8">
               <h1 className="font-jarvis text-4xl sm:text-5xl font-bold text-white tracking-wider">
                 <DecoderText text="JARVIS" />
               </h1>
