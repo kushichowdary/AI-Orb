@@ -17,6 +17,8 @@ const logSequence = [
     'VERIFYING DIGITAL PASS SIGNATURE...',
     'PASS VERIFIED. ACCESS GRANTED.',
     'LOADING NEURAL INTERFACE...',
+    'LOADING YOUR ASSISTANCE...',
+    'PROCESSING....',
 ];
 
 export const SystemCoreTransition: React.FC<SystemCoreTransitionProps> = ({ onComplete }) => {

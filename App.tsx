@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useRef } from 'react';
 // FIX: Use v8 namespaced API instead of v9 modular imports
 // import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -139,7 +138,7 @@ const App: React.FC = () => {
         <>
           {postAuthState === 'showingPass' && (
              <div className="relative w-full h-full">
-                <div className="absolute top-[15%] left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
+                <div className="absolute top-20 left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
                     <WelcomeTitle />
                 </div>
                 <Card onExitAnimationComplete={() => setPostAuthState('bootingSequence')} />
@@ -204,11 +203,11 @@ const App: React.FC = () => {
               ))}
             </div>
 
-            <div className="text-center mb-8 z-10 animate-fadeIn transform translate-x-8">
+            <div className="w-full text-center mb-8 z-10 animate-fadeIn">
               <h1 className="font-jarvis text-4xl sm:text-5xl font-bold text-white tracking-wider">
                 <DecoderText text="JARVIS" />
               </h1>
-              <p className="text-gray-400 mt-2"> AI Assistant </p>
+              <p className="font-jarvis text-lime-400 mt-2 tracking-widest"> Assistant </p>
             </div>
 
             <div className="relative z-10">
