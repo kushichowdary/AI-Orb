@@ -1,4 +1,7 @@
+
 import React, { useState, FormEvent } from 'react';
+// FIX: Use v8 namespaced API instead of v9 modular imports.
+/*
 import { 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
@@ -6,7 +9,9 @@ import {
     updateProfile,
     AuthError
 } from 'firebase/auth';
+*/
 import { auth } from '../utils/firebase';
+import { playLoginSound } from '../utils/audioCues';
 
 type AuthMode = 'login' | 'signup' | 'forgotPassword';
 
@@ -52,7 +57,9 @@ export const AuthPage: React.FC = () => {
 
     try {
         if (authMode === 'login') {
-            await signInWithEmailAndPassword(auth, email, password);
+            // FIX: Use v8 namespaced auth.signInWithEmailAndPassword
+            await auth.signInWithEmailAndPassword(email, password);
+            playLoginSound();
             // After successful login, onAuthStateChanged in App.tsx will handle the navigation.
         } else if (authMode === 'signup') {
             if (!name) {
@@ -60,13 +67,19 @@ export const AuthPage: React.FC = () => {
                 setIsLoading(false);
                 return;
             }
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            await updateProfile(userCredential.user, { displayName: name });
+            // FIX: Use v8 namespaced auth.createUserWithEmailAndPassword
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            // FIX: Use v8 user.updateProfile method
+            if (userCredential.user) {
+              await userCredential.user.updateProfile({ displayName: name });
+            }
+            playLoginSound();
             // After signup, user is automatically logged in.
             // onAuthStateChanged in App.tsx will detect this as a new user and handle navigation.
 
         } else if (authMode === 'forgotPassword') {
-            await sendPasswordResetEmail(auth, email);
+            // FIX: Use v8 namespaced auth.sendPasswordResetEmail
+            await auth.sendPasswordResetEmail(email);
             setMessage('If an account with this email exists, a password reset link has been sent.');
             setAuthMode('login');
         }
@@ -166,13 +179,6 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="w-full max-w-sm animate-fadeIn animate-float">
-      <div className="text-center mb-8">
-        <h1 className="font-jarvis text-4xl sm:text-5xl font-bold text-white tracking-wider">
-          J<span className="text-lime-400">A</span>RV<span className="text-lime-400">I</span>S
-        </h1>
-        <p className="text-gray-400 mt-2"> AI Assistant </p>
-      </div>
-
       <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-6 sm:p-8 transition-all duration-500 animate-auth-glow">
         <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
         

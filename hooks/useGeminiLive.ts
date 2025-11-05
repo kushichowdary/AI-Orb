@@ -246,17 +246,6 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
                 playbackState.sources.add(source);
               }
             }
-
-            // The model can interrupt its own speech if the user starts talking.
-            // This is crucial for a natural conversational flow.
-            const interrupted = message.serverContent?.interrupted;
-            if (interrupted) {
-              const playbackState = audioPlaybackStateRef.current;
-              playbackState.sources.forEach(source => source.stop());
-              playbackState.sources.clear();
-              playbackState.nextStartTime = 0;
-              setIsSpeaking(false);
-            }
           },
           onerror: (e: any) => {
             console.error("Gemini Live session error:", e);

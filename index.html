@@ -519,6 +519,31 @@
         animation: blink-indicator 1.2s infinite step-end;
       }
 
+      /* --- Decoder Text Effect --- */
+      .decoder-text::after {
+        content: '_';
+        visibility: hidden;
+      }
+      .decoder-text-glyph {
+        opacity: 0.8;
+        font-weight: 400; /* regular */
+        font-family: 'Inter', sans-serif;
+        color: #b8fb3c; /* lime-400 */
+      }
+      .decoder-text-value {
+        opacity: 1;
+      }
+      
+      /* --- Visually Hidden --- */
+      .visually-hidden {
+        position: absolute !important;
+        height: 1px;
+        width: 1px;
+        overflow: hidden;
+        clip: rect(1px, 1px, 1px, 1px);
+        white-space: nowrap;
+      }
+
     </style>
   <script type="importmap">
 {
@@ -527,16 +552,15 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "styled-components": "https://aistudiocdn.com/styled-components@^6.1.12",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
-    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
+    "styled-components": "https://aistudiocdn.com/styled-components@^6.1.12"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

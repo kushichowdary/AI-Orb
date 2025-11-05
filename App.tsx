@@ -1,6 +1,8 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+// FIX: Use v8 namespaced API instead of v9 modular imports
+// import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './utils/firebase';
 import { Header } from './components/Header';
 import { AuthPage } from './components/AuthPage';
@@ -14,6 +16,7 @@ import { Controls } from './components/Controls';
 import { Footer } from './components/Footer';
 import { playStopSound } from './utils/audioCues';
 import { SystemCoreTransition } from './components/SystemCoreTransition';
+import { DecoderText } from './components/DecoderText';
 
 type PostAuthState = 'initial' | 'showingPass' | 'bootingSequence' | 'showingOrb';
 
@@ -68,7 +71,8 @@ const App: React.FC = () => {
 
   // Centralized effect to manage authentication state and UI flow.
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    // FIX: Use v8 namespaced auth.onAuthStateChanged
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setIsAuthenticated(true);
         
@@ -109,7 +113,8 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     stopSession(); // Ensure the AI session is terminated on logout
-    signOut(auth).catch(error => console.error("Logout error:", error));
+    // FIX: Use v8 namespaced auth.signOut
+    auth.signOut().catch(error => console.error("Logout error:", error));
   };
   
   const handleOrbClick = () => {
@@ -191,13 +196,21 @@ const App: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex flex-col items-center justify-center relative">
             <div id="particle-container">
               {Array.from({ length: 30 }).map((_, i) => (
                 <span key={i} className="particle" />
               ))}
             </div>
-            <div className="relative">
+
+            <div className="text-center mb-8 z-10 animate-fadeIn">
+              <h1 className="font-jarvis text-4xl sm:text-5xl font-bold text-white tracking-wider">
+                <DecoderText text="JARVIS" />
+              </h1>
+              <p className="text-gray-400 mt-2"> AI Assistant </p>
+            </div>
+
+            <div className="relative z-10">
               <AuthPage />
             </div>
         </div>
