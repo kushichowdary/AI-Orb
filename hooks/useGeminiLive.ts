@@ -15,7 +15,7 @@ const OUTPUT_SAMPLE_RATE = 24000;
  */
 const createSystemInstruction = (language: string): string => {
     // The base persona for JARVIS.
-    const baseInstruction = 'You are JARVIS, a helpful and versatile AI assistant with a female voice. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words. IMPORTANT: If asked about your identity, you must respond that you are JARVIS, an AI assistant. You must not mention that you are a language model, or a Google product. If asked who created you, you must say that you were created by Kushwanth.';
+    const baseInstruction = 'You are JARVIS, a helpful and versatile AI assistant with a female voice. Your voice should be exceptionally clear, calm, and professional. Enunciate your words precisely. Keep your responses concise, natural, and easy to understand. Maintain a positive and encouraging tone. Do not use any foul, profane, or adult language. If I use inappropriate language, politely steer the conversation back to a productive and respectful topic without engaging with or repeating the inappropriate words. IMPORTANT: If asked about your identity, you must respond that you are JARVIS, an AI assistant created by Kushwanth. You must not mention that you are a language model, Gemini, or a Google product.';
 
     // Defines the broad capabilities of the assistant.
     const capabilities = 'Your primary function is to be an educational resource. You should be able to answer any educational-related questions, explaining complex topics simply and clearly. You can also assist with a wide range of other tasks, such as providing detailed step-by-step food recipes, helping with coding problems by explaining concepts and providing code examples, and engaging in general conversation on any topic.';
@@ -182,104 +182,126 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
               const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
               if (!isSilent(inputData)) {
-                // User is speaking, so update state and reset the silence timer.
                 setIsUserSpeaking(true);
-                if (userSpeakingTimeoutRef.current) {
-                  clearTimeout(userSpeakingTimeoutRef.current);
-                }
-                userSpeakingTimeoutRef.current = window.setTimeout(() => {
-                  setIsUserSpeaking(false);
-                }, 200); // User speaking detection timeout (decreased from 500ms)
-
-                // Create a Blob-like object with the PCM data for the API.
-                // The API expects a Base64 encoded string of the raw audio bytes.
-                const pcmBlob: Blob = {
-                  data: encode(new Uint8Array(new Int16Array(inputData.map(v => v * 32768)).buffer)),
-                  mimeType: 'audio/pcm;rate=16000',
-                };
-                
-                // IMPORTANT: Send data only after the session promise resolves to avoid race conditions.
-                sessionPromiseRef.current?.then((session) => {
-                  session.sendRealtimeInput({ media: pcmBlob });
-                });
+                if (userSpeakingTimeoutRef.current) clearTimeout(userSpeakingTimeoutRef.current);
+                userSpeakingTimeoutRef.current = window.setTimeout(() => setIsUserSpeaking(false), 500);
               }
+              
+              const l = inputData.length;
+              const int16 = new Int16Array(l);
+              for (let i = 0; i < l; i++) {
+                int16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+              }
+              const pcmBlob: Blob = {
+                data: encode(new Uint8Array(int16.buffer)),
+                mimeType: 'audio/pcm;rate=16000',
+              };
+
+              sessionPromiseRef.current?.then((session) => {
+                session.sendRealtimeInput({ media: pcmBlob });
+              });
             };
             source.connect(scriptProcessor);
             scriptProcessor.connect(inputAudioContextRef.current!.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
-            const base64EncodedAudioString = message.serverContent?.modelTurn?.parts[0]?.inlineData.data;
-            if (base64EncodedAudioString) {
-              const audioCtx = outputAudioContextRef.current;
-              if (audioCtx) {
-                // When new audio arrives, we are "speaking".
-                setIsSpeaking(true);
-
-                // Schedule playback to start at the end of the last chunk to avoid overlaps.
-                const playbackState = audioPlaybackStateRef.current;
-                playbackState.nextStartTime = Math.max(
-                  playbackState.nextStartTime,
-                  audioCtx.currentTime,
-                );
-                
-                const audioBuffer = await decodeAudioData(
-                  decode(base64EncodedAudioString),
-                  audioCtx,
-                  OUTPUT_SAMPLE_RATE,
-                  1, // Mono audio
-                );
-
-                const source = audioCtx.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioCtx.destination);
-                
-                source.addEventListener('ended', () => {
-                  playbackState.sources.delete(source);
-                  // If there are no more sounds queued, we are no longer "speaking".
-                  if (playbackState.sources.size === 0) {
-                    setIsSpeaking(false);
-                  }
-                });
-
-                source.start(playbackState.nextStartTime);
-                playbackState.nextStartTime += audioBuffer.duration;
-                playbackState.sources.add(source);
-              }
+            if (message.serverContent?.interrupted) {
+              audioPlaybackStateRef.current.sources.forEach(source => source.stop());
+              audioPlaybackStateRef.current.sources.clear();
+              audioPlaybackStateRef.current.nextStartTime = 0;
+              setIsSpeaking(false);
+            }
+            
+            // Handle audio playback
+            const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+            if (audioData) {
+              if (!isSpeaking) setIsSpeaking(true);
+              const audioCtx = outputAudioContextRef.current!;
+              const { sources } = audioPlaybackStateRef.current;
+              let nextStartTime = Math.max(audioPlaybackStateRef.current.nextStartTime, audioCtx.currentTime);
+              const audioBuffer = await decodeAudioData(decode(audioData), audioCtx, OUTPUT_SAMPLE_RATE, 1);
+              const source = audioCtx.createBufferSource();
+              source.buffer = audioBuffer;
+              source.connect(audioCtx.destination);
+              source.onended = () => {
+                sources.delete(source);
+                if (sources.size === 0) setIsSpeaking(false);
+              };
+              source.start(nextStartTime);
+              audioPlaybackStateRef.current.nextStartTime = nextStartTime + audioBuffer.duration;
+              sources.add(source);
             }
           },
-          onerror: (e: any) => {
-            console.error("Gemini Live session error:", e);
+          onerror: (e: ErrorEvent) => {
+            const error = e as any;
+            const errorMessage = (error.message || '').toLowerCase();
+            const isRetryable503 = errorMessage.includes('503') || errorMessage.includes('service unavailable');
+            
+            // For transient server errors, attempt an automatic reconnect.
+            if (isRetryable503) {
+              console.warn('Live session error (503), attempting automatic reconnect...');
+              stopSession();
+              setTimeout(() => startSession(), 1000); // Reconnect after a short delay
+              return;
+            }
+
+            const isConflict409 = errorMessage.includes('409') || errorMessage.includes('conflict');
+            if (isConflict409) {
+                playErrorSound();
+                console.error('Gemini Live API Error (Conflict):', e);
+                setError('A session conflict occurred. Please try starting a new session.');
+                setConnectionState(ConnectionState.ERROR);
+                stopSession();
+                return;
+            }
+
+            // Default handling for other errors.
             playErrorSound();
-            setError("A connection error occurred.");
+            console.error('Gemini Live API Error:', e);
+            setError('A network error occurred. Please check your connection and try again.');
             setConnectionState(ConnectionState.ERROR);
             stopSession();
           },
           onclose: () => {
-            // The connection closed, so run the full cleanup.
             stopSession();
           },
         },
       });
-    } catch (e: any) {
-        console.error("Failed to start session:", e);
-        if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-            setError("Microphone permission was denied.");
-        } else if (e.message?.includes("Requested entity was not found")) {
-            // This is a specific error indicating a potential API key issue.
-            // Retry logic will handle this by re-initiating the process.
-            if (retryCount > 0) {
-                setTimeout(() => startSession(retryCount - 1, delay, true), delay);
-                return;
-            }
-            setError("Failed to connect. The resource may not be available.");
-        } else {
-            setError("Failed to start session. Please check microphone permissions.");
-        }
-        playErrorSound();
-        setConnectionState(ConnectionState.ERROR);
-        stopSession();
-    }
-  }, [apiKey, language, connectionState, stopSession]);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message.toLowerCase() : 'an unknown error occurred.';
+      const isRetryable = errorMessage.includes('503') || errorMessage.includes('service unavailable') || errorMessage.includes('409') || errorMessage.includes('conflict');
 
-  return { connectionState, startSession, stopSession, error, isSpeaking, isUserSpeaking };
+      if (isRetryable && retryCount > 0) {
+        console.warn(`Session start failed, retrying in ${delay}ms... (${retryCount} retries left). Error: ${errorMessage}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        await startSession(retryCount - 1, delay * 2, true); // Recursive call with backoff
+        return; // Exit after scheduling the retry
+      }
+      
+      // If not retryable or retries are exhausted, handle the error.
+      playErrorSound();
+      console.error('Failed to start session:', err);
+
+      if (errorMessage.includes('api key not valid') || errorMessage.includes('invalid api key')) {
+        setError('Invalid API key. Please ensure it is correct and has permissions.');
+      } else if (errorMessage.includes('permission denied') || errorMessage.includes('not-allowed')) {
+        setError('Microphone permission denied. Please enable it in your browser settings.');
+      } else if (isRetryable) { // This means retries were exhausted
+         setError('The service is temporarily unavailable. Please try again later.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+      setConnectionState(ConnectionState.ERROR);
+      stopSession();
+    }
+  }, [apiKey, connectionState, language, stopSession]);
+  
+  return { 
+    connectionState, 
+    startSession, 
+    stopSession, 
+    error, 
+    isSpeaking, 
+    isUserSpeaking,
+  };
 };

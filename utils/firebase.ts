@@ -1,7 +1,6 @@
-// The firebase SDKs are now loaded via script tags in index.html,
-// which creates a global `firebase` object. We declare it here to
-// inform TypeScript about its existence.
-declare const firebase: any;
+
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration is now sourced from environment variables.
 // These are set in your deployment environment (e.g., Netlify) and are injected at build time.
@@ -18,7 +17,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase Authentication and get a reference to the service
-export const auth = firebase.auth();
+export const auth = getAuth(app);

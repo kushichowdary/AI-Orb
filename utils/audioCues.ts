@@ -303,9 +303,9 @@ export const playBootSequenceSound = (): (() => void) => {
 };
 
 export const playLoginSound = () => {
-    // A pleasant, ascending two-tone chime to confirm successful login.
-    playSound('sine', 523.25, 0.15, 0.2); // C5
-    setTimeout(() => playSound('sine', 783.99, 0.25, 0.2), 80); // G5
+    playSound('sine', 523.25, 0.15, 0.3); // C5
+    setTimeout(() => playSound('sine', 659.25, 0.15, 0.3), 80); // E5
+    setTimeout(() => playSound('sine', 783.99, 0.2, 0.3), 160); // G5
 };
 
 export const playConnectingSound = () => {

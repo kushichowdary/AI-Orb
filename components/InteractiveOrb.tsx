@@ -1,5 +1,4 @@
 
-
 import React, { useRef, useEffect, useCallback } from 'react';
 import { ConnectionState } from '../types';
 
@@ -58,9 +57,6 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
     const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
     const nanoParticles = useRef<NanoParticle[]>([]);
 
-    // A ref to hold the latest state values, preventing the animation callback from changing identity.
-    const stateRef = useRef({ connectionState, isSpeaking, isUserSpeaking });
-
     // A simple counter to drive time-based animations.
     const time = useRef(0);
 
@@ -70,11 +66,6 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         distortion: 0, // How much the orb's shape is warped.
         activity: 0,   // How much internal energy/animation is visible.
     });
-
-    // Effect to keep the state ref updated with the latest props.
-    useEffect(() => {
-      stateRef.current = { connectionState, isSpeaking, isUserSpeaking };
-    }, [connectionState, isSpeaking, isUserSpeaking]);
     
     // Initialize the particles once.
     const init = () => {
@@ -86,7 +77,6 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
      * It's responsible for clearing the canvas and drawing all visual elements.
      */
     const animate = useCallback(() => {
-        const { connectionState, isSpeaking, isUserSpeaking } = stateRef.current;
         time.current += 1;
         const ctx = ctxRef.current;
         if (!ctx) {
@@ -254,11 +244,10 @@ export const InteractiveOrb: React.FC<InteractiveOrbProps> = ({ connectionState,
         });
 
         animationFrameId.current = requestAnimationFrame(animate);
-    }, []);
+    }, [isSpeaking, isUserSpeaking, connectionState]);
     
 
     // Effect for setting up and tearing down the canvas and animation loop.
-    // This now only runs once on component mount.
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;

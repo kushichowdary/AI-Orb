@@ -1,8 +1,5 @@
-
-
 import React, { useState, FormEvent } from 'react';
-// FIX: Use v8 namespaced API instead of v9 modular imports.
-/*
+// FIX: Use v9 modular imports for Firebase Auth.
 import { 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
@@ -10,9 +7,8 @@ import {
     updateProfile,
     AuthError
 } from 'firebase/auth';
-*/
 import { auth } from '../utils/firebase';
-import { playLoginSound } from '../utils/audioCues';
+import { DecoderText } from './DecoderText';
 
 type AuthMode = 'login' | 'signup' | 'forgotPassword';
 
@@ -59,9 +55,8 @@ export const AuthPage: React.FC = () => {
 
     try {
         if (authMode === 'login') {
-            // FIX: Use v8 namespaced auth.signInWithEmailAndPassword
-            await auth.signInWithEmailAndPassword(email, password);
-            playLoginSound();
+            // FIX: Use v9 modular signInWithEmailAndPassword.
+            await signInWithEmailAndPassword(auth, email, password);
             // After successful login, onAuthStateChanged in App.tsx will handle the navigation.
         } else if (authMode === 'signup') {
             if (!name) {
@@ -69,26 +64,24 @@ export const AuthPage: React.FC = () => {
                 setIsLoading(false);
                 return;
             }
-            // FIX: Use v8 namespaced auth.createUserWithEmailAndPassword
-            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            // FIX: Use v8 user.updateProfile method
+            // FIX: Use v9 modular createUserWithEmailAndPassword.
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            // FIX: Use v9 modular updateProfile method.
             if (userCredential.user) {
-              await userCredential.user.updateProfile({ displayName: name });
+              await updateProfile(userCredential.user, { displayName: name });
             }
-            playLoginSound();
             // After signup, user is automatically logged in.
             // onAuthStateChanged in App.tsx will detect this as a new user and handle navigation.
 
         } else if (authMode === 'forgotPassword') {
-            // FIX: Use v8 namespaced auth.sendPasswordResetEmail
-            await auth.sendPasswordResetEmail(email);
+            // FIX: Use v9 modular sendPasswordResetEmail.
+            await sendPasswordResetEmail(auth, email);
             setMessage('If an account with this email exists, a password reset link has been sent.');
             setResetEmailSent(true);
         }
     } catch (e) {
-        // FIX: The imported `AuthError` type appears to lack the `code` property in this environment.
-        // Casting to a structural type with a `code` property to resolve the type error.
-        const authError = e as { code: string };
+        // FIX: Cast to AuthError to access the 'code' property for specific error messages.
+        const authError = e as AuthError;
         setError(getFirebaseErrorMessage(authError.code));
     } finally {
         setIsLoading(false);
@@ -191,62 +184,72 @@ export const AuthPage: React.FC = () => {
   );
 
   return (
-    <div className="w-full max-w-sm animate-fadeIn animate-float">
-      <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-6 sm:p-8 transition-all duration-500 animate-auth-glow">
-        <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
-        
-        {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}
-        {message && <p className="text-lime-400 text-center text-sm mb-4">{message}</p>}
+    <div className="w-full max-w-sm animate-fadeIn">
+        <h1 className="font-jarvis text-5xl md:text-6xl font-bold text-center mb-8 animate-text-glow flex items-baseline justify-center">
+            <span className="text-white"><DecoderText text="J" delay={0} /></span>
+            <span className="text-lime-400"><DecoderText text="A" delay={100} /></span>
+            <span className="text-white"><DecoderText text="R" delay={200} /></span>
+            <span className="text-white"><DecoderText text="V" delay={300} /></span>
+            <span className="text-lime-400"><DecoderText text="I" delay={400} /></span>
+            <span className="text-white"><DecoderText text="S" delay={500} /></span>
+        </h1>
+        <div className="animate-float">
+            <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-6 sm:p-8 transition-all duration-500 animate-auth-glow">
+                <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
+                
+                {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}
+                {message && <p className="text-lime-400 text-center text-sm mb-4">{message}</p>}
 
-        {authMode === 'forgotPassword' && resetEmailSent ? (
-            <div>
-                 <p className="text-center text-gray-300 mb-6">Please check your inbox and follow the instructions to reset your password.</p>
-                 <button
-                    onClick={() => handleModeChange('login')}
-                    className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 transform hover:scale-105 active:scale-100"
-                >
-                    Back to Login
-                </button>
-            </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            {renderFormFields()}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-lime-400 text-black font-bold py-3 px-4 rounded-md hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 animate-subtle-glow disabled:bg-lime-400/50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-100"
-            >
-              {getButtonText()}
-            </button>
-          </form>
-        )}
-
-        {!(authMode === 'forgotPassword' && resetEmailSent) && (
-            <div className="text-center mt-6">
-            {authMode === 'login' ? (
-                <>
-                    <button onClick={() => handleModeChange('forgotPassword')} className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
-                        Forgot Password?
-                    </button>
-                    <p className="text-sm text-gray-500 mt-2">
-                        Don't have an account?{' '}
-                        <button onClick={() => handleModeChange('signup')} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
-                            Sign up
+                {authMode === 'forgotPassword' && resetEmailSent ? (
+                    <div>
+                        <p className="text-center text-gray-300 mb-6">Please check your inbox and follow the instructions to reset your password.</p>
+                        <button
+                            onClick={() => handleModeChange('login')}
+                            className="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 transform hover:scale-105 active:scale-100"
+                        >
+                            Back to Login
                         </button>
-                    </p>
-                </>
-            ) : (
-                <p className="text-sm text-gray-500">
-                {authMode === 'signup' ? 'Already have an account?' : 'Remember your password?'}{' '}
-                <button onClick={() => handleModeChange('login')} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
-                    Log In
-                </button>
-                </p>
-            )}
+                    </div>
+                ) : (
+                <form onSubmit={handleSubmit}>
+                    {renderFormFields()}
+
+                    <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-lime-400 text-black font-bold py-3 px-4 rounded-md hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 animate-subtle-glow disabled:bg-lime-400/50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-100"
+                    >
+                    {getButtonText()}
+                    </button>
+                </form>
+                )}
+
+                {!(authMode === 'forgotPassword' && resetEmailSent) && (
+                    <div className="text-center mt-6">
+                    {authMode === 'login' ? (
+                        <>
+                            <button onClick={() => handleModeChange('forgotPassword')} className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                                Forgot Password?
+                            </button>
+                            <p className="text-sm text-gray-500 mt-2">
+                                Don't have an account?{' '}
+                                <button onClick={() => handleModeChange('signup')} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                                    Sign up
+                                </button>
+                            </p>
+                        </>
+                    ) : (
+                        <p className="text-sm text-gray-500">
+                        {authMode === 'signup' ? 'Already have an account?' : 'Remember your password?'}{' '}
+                        <button onClick={() => handleModeChange('login')} className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50" disabled={isLoading}>
+                            Log In
+                        </button>
+                        </p>
+                    )}
+                    </div>
+                )}
             </div>
-        )}
-      </div>
+        </div>
     </div>
   );
 };

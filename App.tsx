@@ -1,8 +1,6 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
-// FIX: Use v8 namespaced API instead of v9 modular imports
-// import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './utils/firebase';
 import { Header } from './components/Header';
 import { AuthPage } from './components/AuthPage';
@@ -16,7 +14,6 @@ import { Controls } from './components/Controls';
 import { Footer } from './components/Footer';
 import { playStopSound } from './utils/audioCues';
 import { SystemCoreTransition } from './components/SystemCoreTransition';
-import { DecoderText } from './components/DecoderText';
 
 type PostAuthState = 'initial' | 'showingPass' | 'bootingSequence' | 'showingOrb';
 
@@ -71,34 +68,24 @@ const App: React.FC = () => {
 
   // Centralized effect to manage authentication state and UI flow.
   useEffect(() => {
-    // FIX: Use v8 namespaced auth.onAuthStateChanged
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsAuthenticated(true);
-        
+        localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
+
+        // Definitive check for a new user, preventing race conditions.
+        // A user is considered "new" if their account was created within the last 5 seconds.
+        // This robustly identifies a fresh sign-up.
         const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime).getTime() : 0;
         const lastSignInTime = user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).getTime() : 0;
-        // A new user is detected if their last sign-in is within a few seconds of their creation time.
         const isNewUser = (lastSignInTime - creationTime) < 5000;
 
         if (isNewUser) {
-          // For a new user, the displayName set during signup might not be immediately available.
-          // We must reload the user object to fetch the latest profile from Firebase.
-          await user.reload();
-          
-          // Now that the profile is updated, store the correct name.
-          localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
-          
-          // Only new users should see the digital pass animation.
           setPostAuthState('showingPass');
         } else {
-          // For existing users who are logging in, just store their name.
-          localStorage.setItem('jarvis-user-name', user.displayName || 'Agent');
-          
-          // They will see the system boot sequence, not the digital pass.
+          // For existing users logging in or returning to the app, show the boot sequence.
           setPostAuthState('bootingSequence');
         }
-
       } else {
         setIsAuthenticated(false);
         localStorage.removeItem('jarvis-user-name');
@@ -113,8 +100,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     stopSession(); // Ensure the AI session is terminated on logout
-    // FIX: Use v8 namespaced auth.signOut
-    auth.signOut().catch(error => console.error("Logout error:", error));
+    signOut(auth).catch(error => console.error("Logout error:", error));
   };
   
   const handleOrbClick = () => {
@@ -138,7 +124,7 @@ const App: React.FC = () => {
         <>
           {postAuthState === 'showingPass' && (
              <div className="relative w-full h-full">
-                <div className="absolute top-20 left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
+                <div className="absolute top-[15%] left-0 right-0 z-20 pointer-events-none animate-fadeInAndOut">
                     <WelcomeTitle />
                 </div>
                 <Card onExitAnimationComplete={() => setPostAuthState('bootingSequence')} />
@@ -196,21 +182,13 @@ const App: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-start pt-24 relative">
+        <div className="w-full h-full flex items-center justify-center">
             <div id="particle-container">
               {Array.from({ length: 30 }).map((_, i) => (
                 <span key={i} className="particle" />
               ))}
             </div>
-
-            <div className="w-full text-center mb-8 z-10 animate-fadeIn">
-              <h1 className="font-jarvis text-4xl sm:text-5xl font-bold text-white tracking-wider">
-                <DecoderText text="JARVIS" />
-              </h1>
-              <p className="font-jarvis text-lime-400 mt-2 tracking-widest"> Assistant </p>
-            </div>
-
-            <div className="relative z-10">
+            <div className="relative">
               <AuthPage />
             </div>
         </div>
