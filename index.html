@@ -261,10 +261,6 @@
         position: relative;
         width: 400px;
         height: 400px;
-        transition: opacity 0.5s ease-out;
-      }
-      .calibration-hud.fade-out {
-        opacity: 0;
       }
 
       .calibration-hud-svg {
@@ -301,133 +297,236 @@
         stroke-width: 1;
         transform-origin: center;
         opacity: 0;
-        animation: sonar-ping 2.5s cubic-bezier(0, .5, .5, 1) calc(var(--delay)) infinite;
+        animation: sonar-ping 2.5s cubic-bezier(0.1, 0.7, 0, 1) infinite;
+        animation-delay: var(--delay);
       }
       @keyframes sonar-ping {
-        from {
-          transform: scale(0.5);
-          opacity: 0.8;
-        }
-        to {
-          transform: scale(2);
-          opacity: 0;
-        }
-      }
-
-      .orb-glow-layer {
-        fill: none;
-        stroke: #b8fb3c;
-        stroke-width: 0.5;
-        transform-origin: center;
-        opacity: 0;
-        animation: glow-fade-in 2s ease-out calc(var(--delay)) forwards;
-      }
-      @keyframes glow-fade-in {
-        to {
-          opacity: 0.15;
-        }
+        0% { transform: scale(0.1); opacity: 1; }
+        100% { transform: scale(1.5); opacity: 0; }
       }
 
       .structure-arc {
         fill: none;
         stroke: #b8fb3c;
-        stroke-width: 1;
+        stroke-width: 1.5;
+        stroke-linecap: round;
         stroke-dasharray: 500;
         stroke-dashoffset: 500;
-        animation: draw-arc 1.5s ease-in-out calc(var(--delay)) forwards;
-      }
-      .structure-arc.glow {
-        filter: drop-shadow(0 0 5px #b8fb3c);
+        opacity: 0;
+        animation: draw-arc 1.5s ease-out forwards;
+        animation-delay: var(--delay);
       }
       @keyframes draw-arc {
-        to {
-          stroke-dashoffset: 0;
-        }
+        0% { opacity: 0.8; }
+        100% { stroke-dashoffset: 0; opacity: 1; }
       }
-
-      .core-text-container {
-        position: absolute;
-        bottom: 10%;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        max-width: 600px;
-        color: #b8fb3c;
-        font-family: 'Orbitron', sans-serif;
-        text-align: left;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        transition: opacity 0.5s ease-out;
-      }
-      .core-text-container.fade-out {
-        opacity: 0;
-      }
-      .log-line {
-        text-align: center;
-        font-size: 1.125rem;
-        letter-spacing: 0.1em;
-        white-space: nowrap;
-        min-height: 1.5rem; /* Prevents layout shift */
-      }
-      .log-line.final-message {
-        font-weight: bold;
-        margin-top: 1rem;
-      }
-
-      .blinking-cursor {
-        display: inline-block;
-        width: 10px;
-        height: 1.5rem;
-        background-color: #b8fb3c;
-        animation: blink 1s step-end infinite;
-        box-shadow: 0 0 5px #b8fb3c;
-        margin: 0 auto; /* Center the cursor */
-      }
-      @keyframes blink {
-        from, to { background-color: transparent; }
-        50% { background-color: #b8fb3c; }
+      .structure-arc.glow {
+        filter: drop-shadow(0 0 8px #b8fb3c) drop-shadow(0 0 16px rgba(184, 251, 60, 0.5));
+        stroke-width: 2.5;
+        stroke: #d9fec5;
       }
       
-      /* --- Decoder Text Effect --- */
-      .decoder-text {
+      .orb-glow-layer {
+        fill: none;
+        stroke: #b8fb3c;
+        stroke-width: 5;
+        transform-origin: center;
+        opacity: 0;
+        filter: blur(25px);
+        animation: glow-fade-in-pulse 4s ease-out forwards;
+        animation-delay: var(--delay);
+      }
+
+      @keyframes glow-fade-in-pulse {
+        0% { opacity: 0; transform: scale(0.95); }
+        50% { opacity: 0.5; transform: scale(1.02); }
+        100% { opacity: 0.4; transform: scale(1); }
+      }
+
+      .calibration-hud.fade-out {
+        animation: hud-fade-out 1s ease-in forwards;
+      }
+      @keyframes hud-fade-out {
+        to { opacity: 0; transform: scale(1.2); }
+      }
+      
+      .core-text-container {
+        position: absolute;
+        bottom: 10vh;
+        width: 500px;
+        max-width: 90vw;
+        padding: 1rem;
+        text-align: left;
+        font-size: 0.9rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #b8fb3c;
+        text-shadow: 0 0 6px rgba(184, 251, 60, 0.5);
+        opacity: 0;
+        animation: text-container-fade-in 1s ease-out 0.5s forwards;
+      }
+      @keyframes text-container-fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .core-text-container.fade-out {
+          animation: text-container-fade-out 1s ease-in forwards;
+      }
+      @keyframes text-container-fade-out {
+          to { opacity: 0; }
+      }
+      
+      .log-line {
+        display: block;
+        white-space: pre;
+        opacity: 0;
+        animation: log-line-fade-in 0.4s ease-out forwards;
+      }
+      @keyframes log-line-fade-in {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .blinking-cursor {
         display: inline-block;
-        white-space: pre; /* Preserve spaces */
-        font-family: 'Orbitron', sans-serif; /* Use the futuristic font */
+        width: 0.6em;
+        height: 1.1em;
+        background-color: #b8fb3c;
+        margin-left: 0.2em;
+        box-shadow: 0 0 8px rgba(184, 251, 60, 0.7);
+        animation: blink 1s step-end infinite;
+        position: relative;
+        top: 0.2em;
+      }
+      @keyframes blink {
+        from, to { background-color: transparent; box-shadow: none; }
+        50% { background-color: #b8fb3c; box-shadow: 0 0 8px rgba(184, 251, 60, 0.7); }
       }
 
-      .decoder-char {
-        transition: color 0.2s ease-out, opacity 0.3s ease-out;
+      /* --- Nebula Background --- */
+      .nebula-background {
+        position: relative;
+        overflow: hidden; /* Keeps the pseudo-element clipped */
       }
 
-      .glyph {
-        color: rgba(184, 251, 60, 0.4); /* Dim lime */
-        text-shadow: 0 0 3px rgba(184, 251, 60, 0.2);
-        font-weight: 400;
-        opacity: 0.8;
+      .nebula-background::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 0; /* Behind content */
+        
+        background: 
+          radial-gradient(ellipse at 70% 30%, hsla(280, 40%, 15%, 0.4), transparent 60%),
+          radial-gradient(ellipse at 30% 70%, hsla(210, 50%, 20%, 0.4), transparent 60%),
+          radial-gradient(ellipse at 90% 80%, hsla(79, 80%, 30%, 0.15), transparent 70%);
+        
+        background-size: 250% 250%;
+        animation: move-nebula 40s ease-in-out infinite alternate;
       }
 
-      .value {
-        color: #d9fec5; /* A slightly softer lime for readability */
-        text-shadow: 0 0 8px rgba(184, 251, 60, 0.7);
+      @keyframes move-nebula {
+        from { background-position: 0% 0%; }
+        to { background-position: 100% 100%; }
+      }
+
+      /* Ensure content is rendered above the background */
+      .nebula-background > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      /* --- Conversation History --- */
+      .conversation-container {
+        height: 100%;
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        overflow-y: auto;
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+        position: relative;
+        /* Add a fade effect at the top and bottom */
+        mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%);
+      }
+      .conversation-container::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, and Opera */
+      }
+      .conversation-content {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem 0;
+      }
+      @keyframes message-fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .message-bubble {
+        padding: 0.75rem 1.25rem;
+        border-radius: 1rem;
+        max-width: 80%;
+        animation: message-fade-in 0.4s ease-out forwards;
+      }
+      .message-bubble.interim {
+        opacity: 0.7;
+      }
+      .message-role {
+        display: block;
+        font-size: 0.75rem;
         font-weight: 700;
-        opacity: 1;
+        margin-bottom: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
-
-      .log-line.final-message .value {
-          color: #b8fb3c; /* Brighter for the final message */
+      .message-bubble p {
+        margin: 0;
+        line-height: 1.5;
+        word-wrap: break-word;
+      }
+      .user-message {
+        align-self: flex-end;
+        background-color: rgba(184, 251, 60, 0.1);
+        border: 1px solid rgba(184, 251, 60, 0.2);
+        color: #e5fcc2;
+        border-bottom-right-radius: 0.25rem;
+      }
+      .user-message .message-role {
+        color: #b8fb3c;
+      }
+      .jarvis-message {
+        align-self: flex-start;
+        background-color: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+        border-bottom-left-radius: 0.25rem;
+      }
+      .jarvis-message .message-role {
+        color: #a0a0a0;
+      }
+      @keyframes blink-indicator {
+        50% { opacity: 0; }
+      }
+      .typing-indicator {
+        animation: blink-indicator 1.2s infinite step-end;
       }
 
     </style>
   <script type="importmap">
 {
   "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "styled-components": "https://aistudiocdn.com/styled-components@^6.1.12",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js",
     "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/",
-    "styled-components": "https://aistudiocdn.com/styled-components@^6.1.19"
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^12.23.24"
   }
 }
 </script>

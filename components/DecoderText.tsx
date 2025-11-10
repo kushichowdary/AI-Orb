@@ -1,147 +1,119 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useSpring } from 'framer-motion';
 
-// A simple hook to check for reduced motion preference.
-const useReducedMotion = () => {
-    const [reducedMotion, setReducedMotion] = React.useState(false);
-    React.useEffect(() => {
-        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-        const getInitial = () => mediaQuery.matches;
-        setReducedMotion(getInitial());
-
-        const listener = (event: MediaQueryListEvent) => {
-            setReducedMotion(event.matches);
-        };
-        
-        // In some older browsers, addEventListener is not supported on media queries.
-        if (mediaQuery.addEventListener) {
-            mediaQuery.addEventListener('change', listener);
-        } else {
-            // Deprecated but necessary for backward compatibility.
-            mediaQuery.addListener(listener);
-        }
-
-        return () => {
-            if (mediaQuery.removeEventListener) {
-                mediaQuery.removeEventListener('change', listener);
-            } else {
-                mediaQuery.removeListener(listener);
-            }
-        };
-    }, []);
-    return reducedMotion;
-};
-
-// prettier-ignore
+// Katakana-like glyphs for the decoding animation
 const glyphs = [
-  'ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'ク', 'ケ', 'コ',
-  'サ', 'シ', 'ス', 'セ', 'ソ', 'タ', 'チ', 'ツ', 'テ', 'ト',
-  'ナ', 'ニ', 'ヌ', 'ネ', 'ノ', 'ハ', 'ヒ', 'フ', 'ヘ', 'ホ',
-  'マ', 'ミ', 'ム', 'メ', 'モ', 'ヤ', 'ユ', 'ヨ', 'ー', 'ラ',
-  'リ', 'ル', 'レ', 'ロ', 'ワ', 'ヰ', 'ヱ', 'ヲ', 'ン', 'ガ',
-  'ギ', 'グ', 'ゲ', 'ゴ', 'ザ', 'ジ', 'ズ', 'ゼ', 'ゾ', 'ダ',
-  'ヂ', 'ヅ', 'デ', 'ド', 'バ', 'ビ', 'ブ', 'ベ', 'ボ', 'パ',
-  'ピ', 'プ', 'ペ', 'ポ', '0', '1', '2', '3', '4', '5', '6',
-  '7', '8', '9', '#', '$', '%', '&', '*', '(', ')', '_', '+',
+  'ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ',
+  'サ','シ','ス','セ','ソ','タ','チ','ツ','テ','ト',
+  'ナ','ニ','ヌ','ネ','ノ','ハ','ヒ','フ','ヘ','ホ',
+  'マ','ミ','ム','メ','モ','ヤ','ユ','ヨ','ー','ラ',
+  'リ','ル','レ','ロ','ワ','ヰ','ヱ','ヲ','ン','ガ',
+  'ギ','グ','ゲ','ゴ','ザ','ジ','ズ','ゼ','ゾ','ダ',
+  'ヂ','ヅ','デ','ド','バ','ビ','ブ','ベ','ボ','パ',
+  'ピ','プ','ペ','ポ',
 ];
 
-const CharType = {
-  Glyph: 'glyph',
-  Value: 'value',
-};
-
-type Char = {
-    type: string;
-    value: string;
-};
-
-function shuffle(content: string[], output: Char[], position: number): Char[] {
-  return content.map((value, index) => {
-    if (index < position) {
-      return { type: CharType.Value, value };
-    }
-    if (Math.random() < 0.95 && output[index]?.value) {
-        return { type: CharType.Glyph, value: output[index].value };
-    }
-    const rand = Math.floor(Math.random() * glyphs.length);
-    return { type: CharType.Glyph, value: glyphs[rand] };
-  });
-}
-
 interface DecoderTextProps {
-    text: string;
-    delay?: number;
-    className?: string;
-    onComplete?: () => void;
+  text: string;
+  className?: string;
+  delay?: number; // ms
+  speed?: number; // (not used directly for timing here, kept for API parity)
+  highlightIndexes?: number[]; // indexes that should be highlighted (lime, no glow)
 }
 
-export const DecoderText: React.FC<DecoderTextProps> = memo(({ text, delay = 0, className, onComplete }) => {
-    const [output, setOutput] = useState<Char[]>([{ type: CharType.Glyph, value: '' }]);
-    const animationFrameId = useRef<number | null>(null);
-    const startTimeRef = useRef<number | null>(null);
-    const onCompleteRef = useRef(onComplete);
-    const reduceMotion = useReducedMotion();
+/**
+ * DecoderText
+ * - slowly reveals `text` from random glyphs
+ * - highlightIndexes: characters at these positions will be rendered with lime color AND without glow
+ * - other resolved characters will be white (and will show the animate-text-glow class)
+ *
+ * Note: this component writes innerHTML to a span for performance during rapid updates.
+ */
+export const DecoderText: React.FC<DecoderTextProps> = ({
+  text,
+  className = '',
+  delay = 0,
+  speed = 10,
+  highlightIndexes = [],
+}) => {
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const outputRef = useRef<{ type: 'glyph' | 'value'; value: string }[]>([]);
+  // simple spring to drive 0 -> text.length (frames)
+  const spring = useSpring(0, { stiffness: 6, damping: 6 });
 
-    useEffect(() => {
-        onCompleteRef.current = onComplete;
-    }, [onComplete]);
+  const shuffle = (content: string[], output: any[], position: number) => {
+    return content.map((value, index) => {
+      if (index < position) {
+        return { type: 'value' as const, value };
+      }
+      // show glyphs randomly before locked in
+      const rand = Math.floor(Math.random() * glyphs.length);
+      return { type: 'glyph' as const, value: glyphs[rand] };
+    });
+  };
 
-    useEffect(() => {
-        const content = text.split('');
-        
-        if (reduceMotion) {
-            setOutput(content.map(char => ({ type: CharType.Value, value: char })));
-            onCompleteRef.current?.();
-            return;
-        }
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-        const startAnimation = () => {
-            setOutput(content.map(() => ({ type: CharType.Glyph, value: '' })));
-            
-            const characterRevealDuration = 100; // Slower for the Jarvis effect
-            const totalDuration = content.length * characterRevealDuration;
-            
-            const animate = (timestamp: number) => {
-                if (!startTimeRef.current) {
-                    startTimeRef.current = timestamp;
-                }
-                const elapsedTime = timestamp - startTimeRef.current;
-                const progress = Math.min(elapsedTime / totalDuration, 1);
-                const position = Math.floor(progress * content.length);
+    const content = text.split('');
+    // initialize with empty glyphs
+    outputRef.current = content.map(() => ({ type: 'glyph', value: '' }));
 
-                setOutput(prevOutput => shuffle(content, prevOutput, position));
-
-                if (progress < 1) {
-                    animationFrameId.current = requestAnimationFrame(animate);
-                } else {
-                    setOutput(content.map(char => ({ type: CharType.Value, value: char })));
-                    onCompleteRef.current?.();
-                }
-            };
-            
-            animationFrameId.current = requestAnimationFrame(animate);
-        };
-        
-        const timeoutId = setTimeout(startAnimation, delay);
-
-        return () => {
-            clearTimeout(timeoutId);
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
+    const render = () => {
+      // Build HTML where:
+      // - resolved characters (type === 'value'):
+      //     - if index is highlighted: lime color, NO glow (no animate-text-glow)
+      //     - else: white + animate-text-glow
+      // - glyph characters: dim limeish glyph color
+      const html = outputRef.current
+        .map((item, i) => {
+          if (item.type === 'glyph') {
+            // glyph styling (dim, small opacity)
+            return `<span aria-hidden="true" class="opacity-70 text-lime-300 select-none">${item.value}</span>`;
+          } else {
+            const isHighlight = highlightIndexes.includes(i);
+            if (isHighlight) {
+              // highlighted (lime) WITHOUT glow
+              return `<span aria-hidden="true" class="text-lime-400 select-none" style="text-shadow: none;">${item.value}</span>`;
+            } else {
+              // white with glow class applied to this span (so glow doesn't affect highlighted spans)
+              return `<span aria-hidden="true" class="text-white select-none animate-text-glow">${item.value}</span>`;
             }
-            startTimeRef.current = null;
-        };
+          }
+        })
+        .join('');
+      el.innerHTML = html;
+    };
 
-    }, [text, delay, reduceMotion]);
+    const unsub = spring.on('change', (value) => {
+      // spring value will be numeric between 0 and content.length
+      outputRef.current = shuffle(content, outputRef.current, value);
+      render();
+    });
 
-    return (
-        <span className={`decoder-text ${className || ''}`} aria-label={text}>
-             <span aria-hidden="true">
-                {output.map((char, index) => (
-                    <span key={index} className={`decoder-char ${char.type === CharType.Glyph ? 'glyph' : 'value'}`}>
-                        {char.value}
-                    </span>
-                ))}
-             </span>
-        </span>
-    );
-});
+    // start after optional delay
+    const start = async () => {
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      // set to content length to drive reveal — final duration depends on spring config
+      spring.set(content.length);
+    };
+    start().catch(() => {});
+
+    return () => {
+      unsub?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, delay, speed, JSON.stringify(highlightIndexes)]); // re-run if text or highlights change
+
+  return (
+    <span
+      ref={containerRef}
+      className={`inline-block font-jarvis tracking-wider ${className}`}
+      aria-label={text}
+      role="img"
+    />
+  );
+};
+
+export default DecoderText;

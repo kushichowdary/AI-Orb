@@ -302,12 +302,6 @@ export const playBootSequenceSound = (): (() => void) => {
   }
 };
 
-export const playLoginSound = () => {
-    playSound('sine', 523.25, 0.15, 0.3); // C5
-    setTimeout(() => playSound('sine', 659.25, 0.15, 0.3), 80); // E5
-    setTimeout(() => playSound('sine', 783.99, 0.2, 0.3), 160); // G5
-};
-
 export const playConnectingSound = () => {
     playSound('sine', 440, 0.5, 0.2, 0.1, 0.1, 880);
 };
