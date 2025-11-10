@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useCallback, useState } from 'react';
 
 interface KeywordDetectionOptions {
@@ -114,15 +113,21 @@ export const useKeywordDetection = ({
     // `continuous` means it will keep listening, not stop after the first utterance.
     recognition.continuous = true;
     recognition.lang = 'en-US';
-    recognition.interimResults = false; // We only care about the final transcript.
+    // Enable interim results to get faster feedback, making wake-word detection more responsive.
+    recognition.interimResults = true;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const last = event.results.length - 1;
       const transcript = event.results[last][0].transcript.trim().toLowerCase();
       
-      // Check if the transcript contains any of our keywords.
-      if (keywords.some(keyword => transcript.includes(keyword))) {
+      // For a wake-word, we check if the utterance *starts* with one of our keywords.
+      // This is a stricter, more accurate check than simply including the keyword,
+      // which significantly reduces false positives from hearing the keyword mid-sentence.
+      if (keywords.some(keyword => transcript.startsWith(keyword))) {
         onKeywordDetectedRef.current();
+        // The parent component (App.tsx) will set `enabled` to false upon successful detection,
+        // which will trigger the cleanup for this effect and stop the current recognition instance.
+        // This prevents multiple triggers from a single utterance.
       }
     };
 
