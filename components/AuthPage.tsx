@@ -109,7 +109,7 @@ export const AuthPage: React.FC = () => {
         />
         {/* subtitle changed to 'assistant' in lime */}
         <p className="font-jarvis text-lime-400 text-lg mt-2 tracking-widest">
-          assistant
+          Assistant
         </p>
       </div>
 
