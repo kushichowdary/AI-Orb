@@ -74,7 +74,9 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
   const stopSession = useCallback(() => {
     // 1. Close the Gemini Live session.
     if (sessionPromiseRef.current) {
-        sessionPromiseRef.current.then(session => session.close()).catch(console.error);
+        sessionPromiseRef.current.then(session => {
+             try { session.close(); } catch(e) { console.warn("Error closing session:", e); }
+        }).catch(console.error);
         sessionPromiseRef.current = null;
     }
 
@@ -153,13 +155,23 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
       mediaStreamRef.current = stream;
 
       // Step 2: Create audio contexts.
-      inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
-      outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
+      // Cleanup old contexts if they exist to prevent resource leaks.
+      if (inputAudioContextRef.current?.state !== 'closed') await inputAudioContextRef.current?.close();
+      if (outputAudioContextRef.current?.state !== 'closed') await outputAudioContextRef.current?.close();
+
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      inputAudioContextRef.current = new AudioContextClass({ sampleRate: INPUT_SAMPLE_RATE });
+      outputAudioContextRef.current = new AudioContextClass({ sampleRate: OUTPUT_SAMPLE_RATE });
       
+      // Ensure contexts are running (handling browser autoplay policies)
+      if (inputAudioContextRef.current.state === 'suspended') await inputAudioContextRef.current.resume();
+      if (outputAudioContextRef.current.state === 'suspended') await outputAudioContextRef.current.resume();
+
       const ai = new GoogleGenAI({ apiKey });
 
       // Step 3: Initiate connection.
-      sessionPromiseRef.current = ai.live.connect({
+      // We define the promise logic but also attach a catch handler immediately to handle initial handshake failures.
+      const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-09-2025',
         config: {
           responseModalities: [Modality.AUDIO],
@@ -174,9 +186,13 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
             setConnectionState(ConnectionState.CONNECTED);
             
             // Step 4: Set up audio processing pipeline.
-            const source = inputAudioContextRef.current!.createMediaStreamSource(stream);
+            if (!inputAudioContextRef.current || !mediaStreamRef.current) return;
+
+            const source = inputAudioContextRef.current.createMediaStreamSource(mediaStreamRef.current);
             mediaStreamSourceRef.current = source;
-            const scriptProcessor = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
+            
+            // Create script processor for recording
+            const scriptProcessor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
             scriptProcessorRef.current = scriptProcessor;
 
             scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
@@ -190,6 +206,7 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
               const l = inputData.length;
               const int16 = new Int16Array(l);
               for (let i = 0; i < l; i++) {
+                // Clip and convert to 16-bit PCM
                 int16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
               }
               const pcmBlob: Blob = {
@@ -197,12 +214,18 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
                 mimeType: 'audio/pcm;rate=16000',
               };
 
+              // Send data only if the session is established
               sessionPromiseRef.current?.then((session) => {
-                session.sendRealtimeInput({ media: pcmBlob });
+                try {
+                   session.sendRealtimeInput({ media: pcmBlob });
+                } catch(e) {
+                   console.error("Error sending input:", e);
+                }
               });
             };
+            
             source.connect(scriptProcessor);
-            scriptProcessor.connect(inputAudioContextRef.current!.destination);
+            scriptProcessor.connect(inputAudioContextRef.current.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
             if (message.serverContent?.interrupted) {
@@ -216,57 +239,80 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
             const audioData = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
             if (audioData) {
               if (!isSpeaking) setIsSpeaking(true);
-              const audioCtx = outputAudioContextRef.current!;
+              const audioCtx = outputAudioContextRef.current;
+              if (!audioCtx) return;
+
               const { sources } = audioPlaybackStateRef.current;
               let nextStartTime = Math.max(audioPlaybackStateRef.current.nextStartTime, audioCtx.currentTime);
-              const audioBuffer = await decodeAudioData(decode(audioData), audioCtx, OUTPUT_SAMPLE_RATE, 1);
-              const source = audioCtx.createBufferSource();
-              source.buffer = audioBuffer;
-              source.connect(audioCtx.destination);
-              source.onended = () => {
-                sources.delete(source);
-                if (sources.size === 0) setIsSpeaking(false);
-              };
-              source.start(nextStartTime);
-              audioPlaybackStateRef.current.nextStartTime = nextStartTime + audioBuffer.duration;
-              sources.add(source);
+              
+              try {
+                const audioBuffer = await decodeAudioData(decode(audioData), audioCtx, OUTPUT_SAMPLE_RATE, 1);
+                const source = audioCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioCtx.destination);
+                source.onended = () => {
+                    sources.delete(source);
+                    if (sources.size === 0) setIsSpeaking(false);
+                };
+                source.start(nextStartTime);
+                audioPlaybackStateRef.current.nextStartTime = nextStartTime + audioBuffer.duration;
+                sources.add(source);
+              } catch(e) {
+                console.error("Audio decoding failed:", e);
+              }
             }
           },
           onerror: (e: ErrorEvent) => {
             const error = e as any;
             const errorMessage = (error.message || '').toLowerCase();
-            const isRetryable503 = errorMessage.includes('503') || errorMessage.includes('service unavailable');
+            console.error('Gemini Live API Error:', error);
             
-            // For transient server errors, attempt an automatic reconnect.
+            const isRetryable503 = errorMessage.includes('503') || errorMessage.includes('service unavailable');
             if (isRetryable503) {
               console.warn('Live session error (503), attempting automatic reconnect...');
               stopSession();
-              setTimeout(() => startSession(), 1000); // Reconnect after a short delay
+              setTimeout(() => startSession(), 1000); 
               return;
             }
 
             const isConflict409 = errorMessage.includes('409') || errorMessage.includes('conflict');
             if (isConflict409) {
                 playErrorSound();
-                console.error('Gemini Live API Error (Conflict):', e);
                 setError('A session conflict occurred. Please try starting a new session.');
                 setConnectionState(ConnectionState.ERROR);
                 stopSession();
                 return;
             }
 
-            // Default handling for other errors.
             playErrorSound();
-            console.error('Gemini Live API Error:', e);
-            setError('A network error occurred. Please check your connection and try again.');
+            // Provide a more friendly message for generic network errors
+            if (errorMessage.includes('network error') || errorMessage.includes('failed to fetch')) {
+                setError('Network connection failed. Please check your internet or API key.');
+            } else {
+                setError('A connection error occurred. Please try again.');
+            }
             setConnectionState(ConnectionState.ERROR);
             stopSession();
           },
           onclose: () => {
+            // console.log('Session closed');
             stopSession();
           },
         },
       });
+
+      // Assign the promise to the ref
+      sessionPromiseRef.current = sessionPromise;
+
+      // Catch initial handshake/connection failures that occur before callbacks
+      sessionPromise.catch((err) => {
+         console.error("Connection handshake failed:", err);
+         playErrorSound();
+         setConnectionState(ConnectionState.ERROR);
+         setError("Failed to establish connection. Please check your API key and network.");
+         stopSession();
+      });
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message.toLowerCase() : 'an unknown error occurred.';
       const isRetryable = errorMessage.includes('503') || errorMessage.includes('service unavailable') || errorMessage.includes('409') || errorMessage.includes('conflict');
@@ -274,11 +320,10 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
       if (isRetryable && retryCount > 0) {
         console.warn(`Session start failed, retrying in ${delay}ms... (${retryCount} retries left). Error: ${errorMessage}`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        await startSession(retryCount - 1, delay * 2, true); // Recursive call with backoff
-        return; // Exit after scheduling the retry
+        await startSession(retryCount - 1, delay * 2, true); 
+        return; 
       }
       
-      // If not retryable or retries are exhausted, handle the error.
       playErrorSound();
       console.error('Failed to start session:', err);
 
@@ -286,7 +331,7 @@ export const useGeminiLive = (apiKey: string | null, language: string) => {
         setError('Invalid API key. Please ensure it is correct and has permissions.');
       } else if (errorMessage.includes('permission denied') || errorMessage.includes('not-allowed')) {
         setError('Microphone permission denied. Please enable it in your browser settings.');
-      } else if (isRetryable) { // This means retries were exhausted
+      } else if (isRetryable) {
          setError('The service is temporarily unavailable. Please try again later.');
       } else {
         setError('An unexpected error occurred. Please try again.');

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { playPrintingSound } from '../utils/audioCues';
@@ -17,11 +18,24 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
   const [qrCodeUrlBack, setQrCodeUrlBack] = useState(PLACEHOLDER_QR);
 
   useEffect(() => {
-    // Play the printing sound and vibration as soon as the component mounts.
-    playPrintingSound();
+    // Slower, more deliberate printing duration (4 seconds)
+    const PRINT_DURATION = 4000;
+    const FLIP_DELAY = 800;
+    const READ_DELAY = 2500;
+
+    // Pass the duration to the audio generator to sync perfectly
+    playPrintingSound(PRINT_DURATION / 1000);
+    
     if ('vibrate' in navigator) {
-      // A pattern to simulate a printer's mechanical movements.
-      navigator.vibrate([100, 30, 100, 30, 100, 30, 200, 30, 200, 30, 200, 30, 400]);
+      // Extended vibration pattern to match the 4s print time
+      // A rhythmic pulsing that mimics a stepper motor
+      const vibrationPattern = [];
+      for (let i = 0; i < 25; i++) {
+          vibrationPattern.push(80); // buzz
+          vibrationPattern.push(60); // pause
+      }
+      vibrationPattern.push(200); // final cut
+      navigator.vibrate(vibrationPattern);
     }
 
     // retrieve user name from local storage
@@ -41,17 +55,17 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
     setQrCodeUrlBack(`${baseUrl}${encodeURIComponent(qrData)}&size=140x140&bgcolor=ffffff&color=000000&qzone=1`);
     setQrCodeUrlFront(`${baseUrl}${encodeURIComponent(qrData)}&size=70x70&bgcolor=ffffff&color=000000&qzone=1`);
 
-    // Sequence the animations:
-    // 1. The 'entering' animation (print) is 2.8s.
-    // 2. After printing is done, trigger the flip.
+    // Sequence the animations
+    
+    // 1. Trigger flip after printing finishes + a small pause
     const flipTimer = setTimeout(() => {
       setIsFlipped(true);
-    }, 2800);
+    }, PRINT_DURATION + 200);
 
-    // 3. After flipping and holding, trigger the exit animation.
+    // 2. Trigger the exit (fall) animation after flip and reading time
     const exitTimer = setTimeout(() => {
       setAnimationState('exiting');
-    }, 4800); // 2.8s (print) + 0.6s (flip transition) + ~1.4s (hold)
+    }, PRINT_DURATION + 200 + FLIP_DELAY + READ_DELAY);
 
     return () => {
         clearTimeout(flipTimer);
@@ -65,7 +79,6 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
     }
   };
   
-  // Helper to format the current date and prepare it for animated display
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -74,21 +87,23 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
       day,
       month,
       year,
-      full: `${year}-${month}-${day}`, // For the dateTime attribute
-      parts: `${day}/${month}/${year}`.split(''), // For individual span animation
+      full: `${year}-${month}-${day}`,
+      parts: `${day}/${month}/${year}`.split(''),
     };
   };
 
   const formattedDate = formatDate(currentDate);
 
   return (
-    <div className="w-full h-full flex items-center justify-center overflow-hidden">
+    <div className="w-full h-full flex items-center justify-center overflow-hidden p-4">
         <StyledWrapper>
             <div>
                 <div className="output">
-                <div className="wrap-colors-1"><div className="bg-colors" /></div>
-                <div className="wrap-colors-2"><div className="bg-colors" /></div>
-                <div className="cover" />
+                  <div className="wrap-colors-1"><div className="bg-colors" /></div>
+                  <div className="wrap-colors-2"><div className="bg-colors" /></div>
+                  <div className="cover" />
+                  {/* Printer Status Light */}
+                  <div className={`status-light ${animationState === 'entering' ? 'printing' : ''}`} />
                 </div>
                 <div className="area">
                 <div className="area-wrapper">
@@ -173,7 +188,6 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
                                 <time dateTime={`${formattedDate.full}T00:00:00Z`}>
                                    {formattedDate.parts.map((char, index) => {
                                       const isSlash = char === '/';
-                                      // Stagger animation from existing indices
                                       const animationIndex = 11 + index; 
                                       return (
                                         <span 
@@ -221,10 +235,11 @@ const Card: React.FC<CardProps> = ({ onExitAnimationComplete }) => {
 }
 
 const StyledWrapper = styled.div`
-  
   transform-style: preserve-3d;
   perspective: 1000px;
-  
+  width: 100%;
+  max-width: 400px;
+
   @keyframes pulsating-glow {
     0%, 100% {
       box-shadow: 0 0 12px 2px rgba(220, 255, 253, 0.6), 0 0 8px 1px rgba(184, 251, 60, 0.5);
@@ -235,41 +250,43 @@ const StyledWrapper = styled.div`
   }
 
   @keyframes print-ticket {
-    from {
-      /* Start translated up by its own height, making it invisible */
+    0% {
       transform: translateY(-100%);
     }
-    to {
-      /* Slide down into its final position */
+    100% {
       transform: translateY(0);
     }
   }
-
-  @keyframes exit-ticket {
-    from {
-      transform: translateY(0) rotateX(0deg) rotateZ(0deg) scale(1);
+  
+  /* New fall animation that accelerates and rotates */
+  @keyframes drop-out {
+    0% {
+      transform: translateY(0) rotateX(0) rotateZ(0);
       opacity: 1;
-      filter: blur(0);
     }
-    to {
-      /* Fall far off-screen, tumbling, shrinking, and blurring to simulate speed and distance. */
-      transform: translateY(160vh) rotateX(50deg) rotateZ(-20deg) scale(0.4);
+    10% {
+      /* Initial 'tear' or 'release' jerk */
+      transform: translateY(20px) rotateX(10deg) rotateZ(-2deg);
+      opacity: 1;
+    }
+    100% {
+      /* Falling off screen with physics-like rotation */
+      transform: translateY(120vh) rotateX(60deg) rotateZ(-15deg) scale(0.9);
       opacity: 0;
-      filter: blur(5px);
     }
   }
 
   .ticket.entering {
-    animation: print-ticket 2.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    /* Linear timing feels more mechanical/robotic */
+    animation: print-ticket 4s linear forwards;
   }
   
   .ticket.entering .float {
-    animation: float 3s ease-in-out 2.8s infinite;
+    animation: float 3s ease-in-out 4s infinite;
   }
 
   .ticket.exiting {
-    /* A custom ease-in curve that simulates rapid acceleration. */
-    animation: exit-ticket 1.4s cubic-bezier(0.6, 0.04, 0.98, 0.335) forwards;
+    animation: drop-out 1.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
   }
   
   .ticket.exiting .float {
@@ -282,10 +299,37 @@ const StyledWrapper = styled.div`
     border-radius: 100px;
     padding: 0 12px 0 10px;
     height: 36px;
-    min-width: 350px;
+    /* Responsive width for mobile */
+    width: 90vw; 
+    max-width: 350px;
+    margin: 0 auto;
     position: relative;
     top: -140px;
     z-index: 5;
+
+    .status-light {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #1a2e1a; /* Dark green (off) */
+      box-shadow: 0 0 2px rgba(0,0,0,0.5);
+      z-index: 12;
+    }
+    
+    .status-light.printing {
+      background-color: #b8fb3c;
+      box-shadow: 0 0 8px #b8fb3c;
+      animation: blink-rapid 0.2s steps(2) infinite;
+    }
+    
+    @keyframes blink-rapid {
+      0% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
 
     .cover {
       position: absolute;
@@ -299,6 +343,7 @@ const StyledWrapper = styled.div`
       transition: filter 1000ms cubic-bezier(0, 0, 0, 1);
       filter: blur(5px);
     }
+    /* ... other .output children ... */
     .cover::after {
       content: "";
       top: -10px;
@@ -373,20 +418,6 @@ const StyledWrapper = styled.div`
     border-radius: 100px;
   }
 
-  @keyframes cycle-opacity {
-    0% {
-      opacity: 0;
-    }
-    30% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-    }
-  }
   @keyframes cycle-rotate {
     from {
       transform: translateX(-50%) rotate(0deg);
@@ -397,19 +428,18 @@ const StyledWrapper = styled.div`
   }
 
   .area {
-    --ease-elastic: cubic-bezier(0.5, 2, 0.3, 0.8);
-
     display: flex;
     align-items: center;
     justify-content: center;
     position: absolute;
     inset: 0;
+    /* Ensure touch interactions don't drag the whole area */
+    touch-action: none;
 
     .area-wrapper {
-      &:hover .wrapper {
-        transform: translateY(0) scale(1);
-        box-shadow: 0 20px 50px -5px black;
-      }
+       width: 100%;
+       display: flex;
+       justify-content: center;
     }
   }
 
@@ -435,18 +465,19 @@ const StyledWrapper = styled.div`
     display: flex;
     justify-content: center;
     perspective: 1000px;
-    /* This padding ensures the top of the ticket doesn't get clipped by the mask */
     padding-top: 40px;
-    /* Mask creates a soft edge at the top, hiding the ticket before it prints */
     mask-image: linear-gradient(to bottom, transparent 0%, black 40px);
+    width: 100%;
   }
 
   .ticket {
     transform-style: preserve-3d;
-    transform: translateY(-100%); /* Start position for the printing animation */
+    transform: translateY(-100%);
+    /* Ensure the ticket fits within mobile screens */
+    width: 100%;
+    max-width: 320px;
   }
   
-
   .ticket:nth-child(2) .ticket-body {
     transition-delay: 0.7s;
   }
@@ -461,15 +492,17 @@ const StyledWrapper = styled.div`
     transform: rotateY(180deg);
   }
 
-
   .float {
     transform-style: preserve-3d;
     pointer-events: none;
+    width: 100%;
   }
 
   .front,
   .back {
-    display: inline-block;
+    display: flex;
+    justify-content: center;
+    width: 100%;
     backface-visibility: hidden;
     transform-style: preserve-3d;
   }
@@ -508,79 +541,31 @@ const StyledWrapper = styled.div`
     mix-blend-mode: soft-light;
     opacity: 0.6;
   }
-
+  /* ... icon-cube animations kept same ... */
   .icon-cube path {
     animation-delay: calc(var(--i) * 100ms) !important;
     transform-origin: center;
   }
-
-  .icon-cube .path-center {
-    animation: path-center 3s ease-in-out infinite;
-  }
-  @keyframes path-center {
-    50% {
-      transform: scale(1.3);
-    }
-  }
-
-  .icon-cube .path-t {
-    animation: path-t 1.6s ease-in-out infinite;
-  }
-  @keyframes path-t {
-    50% {
-      transform: translateY(1px);
-    }
-  }
-
-  .icon-cube .path-tl {
-    animation: path-tl 1.6s ease-in-out infinite;
-  }
-  @keyframes path-tl {
-    50% {
-      transform: translateX(1px) translateY(1px);
-    }
-  }
-
-  .icon-cube .path-tr {
-    animation: path-tr 1.6s ease-in-out infinite;
-  }
-  @keyframes path-tr {
-    50% {
-      transform: translateX(-1px) translateY(1px);
-    }
-  }
-
-  .icon-cube .path-br {
-    animation: path-br 1.6s ease-in-out infinite;
-  }
-  @keyframes path-br {
-    50% {
-      transform: translateX(-1px) translateY(-1px);
-    }
-  }
-
-  .icon-cube .path-bl {
-    animation: path-bl 1.6s ease-in-out infinite;
-  }
-  @keyframes path-bl {
-    50% {
-      transform: translateX(1px) translateY(-1px);
-    }
-  }
-
-  .icon-cube .path-b {
-    animation: path-b 1.6s ease-in-out infinite;
-  }
-  @keyframes path-b {
-    50% {
-      transform: translateY(-1px);
-    }
-  }
+  .icon-cube .path-center { animation: path-center 3s ease-in-out infinite; }
+  @keyframes path-center { 50% { transform: scale(1.3); } }
+  .icon-cube .path-t { animation: path-t 1.6s ease-in-out infinite; }
+  @keyframes path-t { 50% { transform: translateY(1px); } }
+  .icon-cube .path-tl { animation: path-tl 1.6s ease-in-out infinite; }
+  @keyframes path-tl { 50% { transform: translateX(1px) translateY(1px); } }
+  .icon-cube .path-tr { animation: path-tr 1.6s ease-in-out infinite; }
+  @keyframes path-tr { 50% { transform: translateX(-1px) translateY(1px); } }
+  .icon-cube .path-br { animation: path-br 1.6s ease-in-out infinite; }
+  @keyframes path-br { 50% { transform: translateX(-1px) translateY(-1px); } }
+  .icon-cube .path-bl { animation: path-bl 1.6s ease-in-out infinite; }
+  @keyframes path-bl { 50% { transform: translateX(1px) translateY(-1px); } }
+  .icon-cube .path-b { animation: path-b 1.6s ease-in-out infinite; }
+  @keyframes path-b { 50% { transform: translateY(-1px); } }
 
   .ticket-body {
     display: block;
     position: relative;
-    width: 320px;
+    width: 100%;
+    max-width: 320px;
     margin-bottom: 20px;
     padding: 0;
     border-radius: 7px 7px 0px 0px;
@@ -589,6 +574,7 @@ const StyledWrapper = styled.div`
     background: linear-gradient(to bottom, white, #dcfffd);
     color: black;
     animation: pulsating-glow 4s ease-in-out infinite;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
 
     svg,
     img {
@@ -598,7 +584,7 @@ const StyledWrapper = styled.div`
     .bold {
       font-weight: 800;
     }
-
+    /* ... header and contents styles kept ... */
     header {
       display: flex;
       align-items: center;
@@ -618,19 +604,9 @@ const StyledWrapper = styled.div`
         gap: 4px;
         letter-spacing: -2px;
       }
-
-      span {
-        display: inline-block;
-      }
-
-      time {
-        display: flex;
-      }
-
-      .slash {
-        padding: 0 1px;
-        color: rgba(0, 0, 0, 0.4);
-      }
+      span { display: inline-block; }
+      time { display: flex; }
+      .slash { padding: 0 1px; color: rgba(0, 0, 0, 0.4); }
     }
     header::after,
     header::before {
@@ -645,9 +621,7 @@ const StyledWrapper = styled.div`
       z-index: 11;
       bottom: -7px;
     }
-    header:after {
-      left: -8px;
-    }
+    header:after { left: -8px; }
     .contents {
       display: flex;
       align-items: center;
@@ -664,7 +638,6 @@ const StyledWrapper = styled.div`
         z-index: 1;
         margin-top: -30px;
         font-weight: 600;
-
         span {
           display: inline-block;
           height: 15px;
@@ -677,7 +650,6 @@ const StyledWrapper = styled.div`
           font-weight: 800;
           margin-right: -3px;
         }
-
         div:nth-child(2) {
           font-size: 13px;
           letter-spacing: 0.45em;
@@ -685,7 +657,6 @@ const StyledWrapper = styled.div`
           color: #2f4c8b62;
         }
       }
-
       .number {
         position: absolute;
         left: 15px;
@@ -717,11 +688,7 @@ const StyledWrapper = styled.div`
       -webkit-linear-gradient(-45deg, #dcfffd 50%, transparent 50%) 0 50%,
       transparent;
     background-repeat: repeat-x;
-    background-size:
-      16px 16px,
-      16px 16px,
-      cover,
-      cover;
+    background-size: 16px 16px, 16px 16px, cover, cover;
     height: 16px;
     width: 100%;
     pointer-events: none;
@@ -729,36 +696,12 @@ const StyledWrapper = styled.div`
 
   .barcode {
     box-shadow:
-      1px 0 0 1px,
-      5px 0 0 1px,
-      10px 0 0 1px,
-      11px 0 0 1px,
-      15px 0 0 1px,
-      18px 0 0 1px,
-      22px 0 0 1px,
-      23px 0 0 1px,
-      26px 0 0 1px,
-      30px 0 0 1px,
-      35px 0 0 1px,
-      37px 0 0 1px,
-      41px 0 0 1px,
-      44px 0 0 1px,
-      47px 0 0 1px,
-      51px 0 0 1px,
-      56px 0 0 1px,
-      59px 0 0 1px,
-      64px 0 0 1px,
-      68px 0 0 1px,
-      72px 0 0 1px,
-      74px 0 0 1px,
-      77px 0 0 1px,
-      81px 0 0 1px,
-      85px 0 0 1px,
-      88px 0 0 1px,
-      92px 0 0 1px,
-      95px 0 0 1px,
-      96px 0 0 1px,
-      97px 0 0 1px;
+      1px 0 0 1px, 5px 0 0 1px, 10px 0 0 1px, 11px 0 0 1px, 15px 0 0 1px,
+      18px 0 0 1px, 22px 0 0 1px, 23px 0 0 1px, 26px 0 0 1px, 30px 0 0 1px,
+      35px 0 0 1px, 37px 0 0 1px, 41px 0 0 1px, 44px 0 0 1px, 47px 0 0 1px,
+      51px 0 0 1px, 56px 0 0 1px, 59px 0 0 1px, 64px 0 0 1px, 68px 0 0 1px,
+      72px 0 0 1px, 74px 0 0 1px, 77px 0 0 1px, 81px 0 0 1px, 85px 0 0 1px,
+      88px 0 0 1px, 92px 0 0 1px, 95px 0 0 1px, 96px 0 0 1px, 97px 0 0 1px;
     display: inline-block;
     height: 30px;
     width: 0;
@@ -768,144 +711,66 @@ const StyledWrapper = styled.div`
   }
 
   @keyframes appear {
-    0% {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    0% { opacity: 0; transform: translateX(100%); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 
   @keyframes appear2 {
-    0% {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    100% {
-      opacity: 0;
-      transform: translateX(100%);
-    }
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateX(100%); }
   }
 
-  .back header span {
-    animation: none;
-  }
+  .back header span { animation: none; }
   .ticket-flip-container.flipped .back header span {
     opacity: 0;
-    animation: appear 0.5s var(--ease-elastic) forwards
-      calc(var(--i) * 20ms + 400ms);
+    animation: appear 0.5s var(--ease-elastic) forwards calc(var(--i) * 20ms + 400ms);
   }
-
   .ticket-flip-container.flipped .front header span {
     opacity: 1;
     animation: appear2;
   }
   .front header span {
     opacity: 0;
-    animation: appear 0.5s var(--ease-elastic) forwards
-      calc(var(--i) * 20ms + 400ms);
+    animation: appear 0.5s var(--ease-elastic) forwards calc(var(--i) * 20ms + 400ms);
   }
 
   .qrcode {
     position: absolute;
     z-index: 1;
     color: #a5b7eb;
-
-    img {
-      display: block;
-      height: 140px;
-    }
+    img { display: block; height: 140px; }
   }
-  .back .qrcode {
-    margin-top: 8px;
-  }
+  .back .qrcode { margin-top: 8px; }
   .back .qrcode::after {
     --stroke-width: 0.2rem;
     --corner-size: 1rem;
-
     position: absolute;
     content: "";
     background:
-      linear-gradient(
-          to right,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        0 0,
-      linear-gradient(
-          to right,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        0 100%,
-      linear-gradient(
-          to left,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        100% 0,
-      linear-gradient(
-          to left,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        100% 100%,
-      linear-gradient(
-          to bottom,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        0 0,
-      linear-gradient(
-          to bottom,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        100% 0,
-      linear-gradient(
-          to top,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        0 100%,
-      linear-gradient(
-          to top,
-          currentColor var(--stroke-width),
-          transparent var(--stroke-width)
-        )
-        100% 100%;
+      linear-gradient(to right, currentColor var(--stroke-width), transparent var(--stroke-width)) 0 0,
+      linear-gradient(to right, currentColor var(--stroke-width), transparent var(--stroke-width)) 0 100%,
+      linear-gradient(to left, currentColor var(--stroke-width), transparent var(--stroke-width)) 100% 0,
+      linear-gradient(to left, currentColor var(--stroke-width), transparent var(--stroke-width)) 100% 100%,
+      linear-gradient(to bottom, currentColor var(--stroke-width), transparent var(--stroke-width)) 0 0,
+      linear-gradient(to bottom, currentColor var(--stroke-width), transparent var(--stroke-width)) 100% 0,
+      linear-gradient(to top, currentColor var(--stroke-width), transparent var(--stroke-width)) 0 100%,
+      linear-gradient(to top, currentColor var(--stroke-width), transparent var(--stroke-width)) 100% 100%;
     background-size: var(--corner-size) var(--corner-size);
     inset: 0;
     background-repeat: no-repeat;
-  }
-  .back .qrcode::after {
     animation: breath 3s var(--ease-elastic) infinite;
   }
 
   @keyframes breath {
-    0% {
-      transform: scale(1.05);
-      opacity: 0.3;
-    }
-    50% {
-      transform: scale(1.15);
-      opacity: 1;
-    }
-    100% {
-      transform: scale(1.05);
-      opacity: 0.3;
-    }
+    0% { transform: scale(1.05); opacity: 0.3; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1.05); opacity: 0.3; }
   }
 
   .front .qrcode {
     right: 5px;
     bottom: -5px;
-
-    img {
-      height: 70px;
-    }
+    img { height: 70px; }
   }
 
   .reflex {
@@ -947,43 +812,15 @@ const StyledWrapper = styled.div`
     inset: 0;
     mask-image: linear-gradient(white 50%, transparent 100%);
     border-radius: 7px 7px 0px 0px;
-    background: radial-gradient(
-        at 30% -5%,
-        #90f1f1,
-        #d3ccf0,
-        rgba(255, 255, 255, 0) 25%
-      ),
+    background: radial-gradient(at 30% -5%, #90f1f1, #d3ccf0, rgba(255, 255, 255, 0) 25%),
       radial-gradient(at 30% 40%, #aad1f0, rgba(255, 255, 255, 0) 20%),
       radial-gradient(at 50% 70%, #c4f2e5, rgba(255, 255, 255, 0) 30%),
       radial-gradient(at 70% 0%, #d3ccf0, rgba(255, 255, 255, 0) 20%),
-      linear-gradient(
-        75deg,
-        #90f1f1 5%,
-        rgba(255, 255, 255, 0),
-        #aad1f0,
-        rgba(255, 255, 255, 0),
-        #e9d0ed,
-        rgba(255, 255, 255, 0),
-        #d3ccf0,
-        rgba(255, 255, 255, 0),
-        #c4f2e5 90%
-      ),
+      linear-gradient(75deg, #90f1f1 5%, rgba(255, 255, 255, 0), #aad1f0, rgba(255, 255, 255, 0), #e9d0ed, rgba(255, 255, 255, 0), #d3ccf0, rgba(255, 255, 255, 0), #c4f2e5 90%),
       radial-gradient(at 30% 50%, #90f1f1, rgba(255, 255, 255, 0) 30%),
       radial-gradient(at 30% 50%, #9cb9fc, rgba(255, 255, 255, 0) 30%),
       radial-gradient(at 100% 50%, #90f1f1, #c2dcf2, rgba(255, 255, 255, 0) 50%),
-      linear-gradient(
-        115deg,
-        #90f1f1 5%,
-        #aad1f0 10%,
-        #d3ccf0,
-        #e9d0ed 20%,
-        #aad1f0,
-        #aad1f0 30%,
-        #d3ccf0,
-        #c2dcf2 40%,
-        #90f1f1,
-        #aad1f0 70%
-      );
+      linear-gradient(115deg, #90f1f1 5%, #aad1f0 10%, #d3ccf0, #e9d0ed 20%, #aad1f0, #aad1f0 30%, #d3ccf0, #c2dcf2 40%, #90f1f1, #aad1f0 70%);
   }
 
   .noise {
@@ -993,12 +830,7 @@ const StyledWrapper = styled.div`
     left: 0;
     right: 0;
     opacity: 0.07;
-    mask-image: linear-gradient(
-      transparent 5%,
-      white 30%,
-      white 70%,
-      transparent 95%
-    );
+    mask-image: linear-gradient(transparent 5%, white 30%, white 70%, transparent 95%);
     filter: grayscale(1);
     pointer-events: none;
     z-index: 1;

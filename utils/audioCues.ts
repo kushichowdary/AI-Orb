@@ -1,3 +1,4 @@
+
 // Create a single AudioContext to be reused.
 let audioContext: AudioContext | null = null;
 const getAudioContext = (): AudioContext => {
@@ -52,31 +53,47 @@ const playSound = (
 /**
  * Plays a mechanical, old-style paper printer sound.
  * This combines a low motor hum with bursts of filtered white noise to simulate a print head.
+ * @param duration The total duration of the printing sound in seconds.
  */
-export const playPrintingSound = () => {
+export const playPrintingSound = (duration: number = 4.0) => {
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
-    const duration = 2.8; // Match the animation duration
-    const printingDuration = duration - 0.5; // Leave time for final sounds
+    // Reserve the last 0.5s for cut and tear sounds
+    const printingDuration = duration - 0.5; 
 
-    // 1. Motor whir for print head movement
+    // 1. Motor whir for print head movement (Deep hum)
     const motorGain = ctx.createGain();
     motorGain.gain.setValueAtTime(0, now);
-    motorGain.gain.linearRampToValueAtTime(0.05, now + 0.1); // Fade in
-    motorGain.gain.setValueAtTime(0.05, now + printingDuration);
-    motorGain.gain.linearRampToValueAtTime(0, now + printingDuration + 0.1); // Fade out
+    motorGain.gain.linearRampToValueAtTime(0.1, now + 0.2); // Slow fade in
+    motorGain.gain.setValueAtTime(0.1, now + printingDuration);
+    motorGain.gain.linearRampToValueAtTime(0, now + printingDuration + 0.2); // Fade out
     motorGain.connect(ctx.destination);
 
     const motorOsc = ctx.createOscillator();
-    motorOsc.type = 'sawtooth';
-    motorOsc.frequency.setValueAtTime(120, now); // Low frequency hum
+    motorOsc.type = 'square'; // Square wave sounds more mechanical
+    motorOsc.frequency.setValueAtTime(60, now);
+    motorOsc.frequency.linearRampToValueAtTime(55, now + printingDuration); // Slight drag
     motorOsc.connect(motorGain);
     motorOsc.start(now);
     motorOsc.stop(now + duration);
 
-    // 2. Printing ticks using bursts of filtered noise for a more physical sound
-    const ticksPerSecond = 30;
+    // 2. High pitched servo whine (Layered on top)
+    const servoOsc = ctx.createOscillator();
+    const servoGain = ctx.createGain();
+    servoOsc.type = 'sawtooth';
+    servoOsc.frequency.setValueAtTime(800, now);
+    servoGain.gain.setValueAtTime(0, now);
+    servoGain.gain.linearRampToValueAtTime(0.03, now + 0.1);
+    servoGain.gain.linearRampToValueAtTime(0, now + printingDuration);
+    servoOsc.connect(servoGain).connect(ctx.destination);
+    servoOsc.start(now);
+    servoOsc.stop(now + printingDuration);
+
+
+    // 3. Printing ticks using bursts of filtered noise for a more physical sound
+    // Slower tick rate for "slow printing" feel
+    const ticksPerSecond = 25;
     const numTicks = Math.floor(printingDuration * ticksPerSecond);
 
     for (let i = 0; i < numTicks; i++) {
@@ -93,13 +110,13 @@ export const playPrintingSound = () => {
       
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.value = 1500 + Math.random() * 1000;
-      filter.Q.value = 5;
+      filter.frequency.value = 1200 + Math.random() * 800; // Varying pitch for realism
+      filter.Q.value = 2;
 
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.2, startTime + 0.002); // Sharp attack
-      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.03); // Quick decay
+      gain.gain.linearRampToValueAtTime(0.15, startTime + 0.005); // Sharp attack
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.04); // Quick decay
       
       noiseSource.connect(filter);
       filter.connect(gain);
@@ -107,23 +124,25 @@ export const playPrintingSound = () => {
       noiseSource.start(startTime);
     }
     
-    // 3. Keep the sharp "cutter" and "tear" sounds for the end.
-    const cutTime = now + duration - 0.2;
+    // 4. Keep the sharp "cutter" and "tear" sounds for the end.
+    const cutTime = now + duration - 0.3;
     const cutOsc = ctx.createOscillator();
     const cutGain = ctx.createGain();
     cutOsc.type = 'square';
-    cutOsc.frequency.setValueAtTime(1800, cutTime);
+    cutOsc.frequency.setValueAtTime(1200, cutTime);
+    cutOsc.frequency.exponentialRampToValueAtTime(500, cutTime + 0.1); // Pitch drop
     cutGain.gain.setValueAtTime(0, cutTime);
-    cutGain.gain.linearRampToValueAtTime(0.3, cutTime + 0.01);
-    cutGain.gain.exponentialRampToValueAtTime(0.001, cutTime + 0.05);
+    cutGain.gain.linearRampToValueAtTime(0.2, cutTime + 0.01);
+    cutGain.gain.exponentialRampToValueAtTime(0.001, cutTime + 0.1);
     cutOsc.connect(cutGain);
     cutGain.connect(ctx.destination);
     cutOsc.start(cutTime);
-    cutOsc.stop(cutTime + 0.05);
+    cutOsc.stop(cutTime + 0.1);
 
-    const tearTime = now + duration - 0.15;
+    // Paper rustle/tear
+    const tearTime = now + duration - 0.2;
     const tearNoiseSource = ctx.createBufferSource();
-    const tearBufferSize = Math.floor(ctx.sampleRate * 0.1);
+    const tearBufferSize = Math.floor(ctx.sampleRate * 0.15);
     const tearBuffer = ctx.createBuffer(1, tearBufferSize, ctx.sampleRate);
     const tearData = tearBuffer.getChannelData(0);
     for (let i = 0; i < tearBufferSize; i++) {
@@ -131,12 +150,15 @@ export const playPrintingSound = () => {
     }
     tearNoiseSource.buffer = tearBuffer;
 
+    const tearFilter = ctx.createBiquadFilter();
+    tearFilter.type = 'highpass';
+    tearFilter.frequency.value = 500;
+
     const tearGain = ctx.createGain();
-    tearGain.gain.setValueAtTime(0.2, tearTime);
-    tearGain.gain.exponentialRampToValueAtTime(0.001, tearTime + 0.1);
+    tearGain.gain.setValueAtTime(0.3, tearTime);
+    tearGain.gain.exponentialRampToValueAtTime(0.001, tearTime + 0.15);
     
-    tearNoiseSource.connect(tearGain);
-    tearGain.connect(ctx.destination);
+    tearNoiseSource.connect(tearFilter).connect(tearGain).connect(ctx.destination);
     tearNoiseSource.start(tearTime);
 
   } catch (e) {
