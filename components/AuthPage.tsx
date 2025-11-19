@@ -16,17 +16,17 @@ const getFirebaseErrorMessage = (errorCode: string): string => {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'Invalid email or password.';
+      return 'Access denied. Invalid credentials.';
     case 'auth/email-already-in-use':
-      return 'An account with this email already exists.';
+      return 'Access ID already registered in system.';
     case 'auth/weak-password':
-      return 'Password is too weak. It should be at least 6 characters.';
+      return 'Security Key too weak. Minimum 6 characters required.';
     case 'auth/invalid-email':
-      return 'Please enter a valid email address.';
+      return 'Invalid Access ID format.';
     case 'auth/network-request-failed':
-      return 'Network error. Please check your connection.';
+      return 'Network Uplink Failed. Check connection.';
     default:
-      return 'An unexpected error occurred. Please try again.';
+      return 'System Error. Authentication failed.';
   }
 };
 
@@ -51,7 +51,7 @@ export const AuthPage: React.FC = () => {
         await signInWithEmailAndPassword(auth, email, password);
       } else if (authMode === 'signup') {
         if (!name) {
-          setError('Please enter your full name.');
+          setError('Agent Designation required.');
           setIsLoading(false);
           return;
         }
@@ -59,7 +59,7 @@ export const AuthPage: React.FC = () => {
         await updateProfile(userCredential.user, { displayName: name });
       } else if (authMode === 'forgotPassword') {
         await sendPasswordResetEmail(auth, email);
-        setMessage('If an account with this email exists, a password reset link has been sent.');
+        setMessage('Recovery sequence transmitted to Access ID.');
         setAuthMode('login');
       }
     } catch (e) {
@@ -73,11 +73,11 @@ export const AuthPage: React.FC = () => {
   const getTitle = () => {
     switch (authMode) {
       case 'login':
-        return 'Welcome Back';
+        return 'Identity Verification';
       case 'signup':
-        return 'Create Account';
+        return 'Agent Registration';
       case 'forgotPassword':
-        return 'Reset Password';
+        return 'Credential Recovery';
     }
   };
 
@@ -85,11 +85,11 @@ export const AuthPage: React.FC = () => {
     if (isLoading) return 'Processing...';
     switch (authMode) {
       case 'signup':
-        return 'Sign Up';
+        return 'Initialize Protocol';
       case 'login':
-        return 'Log In';
+        return 'Authenticate';
       case 'forgotPassword':
-        return 'Send Reset Link';
+        return 'Transmit Override';
     }
   };
 
@@ -97,8 +97,8 @@ export const AuthPage: React.FC = () => {
   const highlightIndexes = [1, 4];
 
   return (
-    <div className="w-full max-w-sm animate-fadeIn animate-float">
-      <div className="text-center mb-8">
+    <div className="w-full max-w-sm flex flex-col items-center font-jarvis">
+      <div className="text-center mb-6">
         {/* J(AI)RVS with AI highlighted in lime (no glow) */}
         <DecoderText
           text="JARVIS"
@@ -108,66 +108,67 @@ export const AuthPage: React.FC = () => {
           className="text-5xl font-bold"
         />
         {/* subtitle changed to 'assistant' in lime */}
-        <p className="font-jarvis text-lime-400 text-lg mt-2 tracking-widest">
+        <p className="text-lime-400 text-lg mt-2 tracking-widest">
           Assistant
         </p>
       </div>
 
-      <div className="auth-card-background bg-black/20 backdrop-blur-md border border-gray-800 rounded-lg shadow-2xl shadow-lime-500/5 p-8 transition-all duration-500 animate-auth-glow">
-        <h2 className="text-2xl font-bold text-center text-white mb-6">{getTitle()}</h2>
+      {/* Updated Card Styling: Transparent initially, blur on hover, with LIME GLOW EDGES */}
+      <div className="w-full bg-transparent backdrop-blur-[2px] hover:backdrop-blur-xl hover:bg-black/60 border border-white/10 rounded-2xl shadow-2xl p-8 transition-all duration-500 ease-out group hover:border-lime-400/50 hover:shadow-[0_0_20px_rgba(184,251,60,0.3)]">
+        <h2 className="text-2xl font-bold text-center text-white mb-6 tracking-wide group-hover:drop-shadow-[0_0_10px_rgba(184,251,60,0.5)] transition-all">{getTitle()}</h2>
 
-        {error && <p className="text-red-400 text-center text-sm mb-4">{error}</p>}
-        {message && <p className="text-lime-400 text-center text-sm mb-4">{message}</p>}
+        {error && <p className="text-red-400 text-center text-sm mb-4 bg-red-500/10 py-2 rounded border border-red-500/20">{error}</p>}
+        {message && <p className="text-lime-400 text-center text-sm mb-4 bg-lime-500/10 py-2 rounded border border-lime-500/20">{message}</p>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {authMode === 'signup' && (
-            <div className="relative mb-4">
-              <label htmlFor="name" className="sr-only">Full Name</label>
+            <div className="relative">
+              <label htmlFor="name" className="sr-only">Agent Designation</label>
               <input
                 id="name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Full Name"
+                placeholder="Agent Designation"
                 required
                 disabled={isLoading}
-                className="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-white/5 text-white placeholder-gray-400 border border-white/10 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400/50 focus:border-lime-400/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm hover:bg-white/10 text-sm tracking-wide"
               />
             </div>
           )}
 
-          <div className="relative mb-4">
-            <label htmlFor="email" className="sr-only">Email</label>
+          <div className="relative">
+            <label htmlFor="email" className="sr-only">Access ID</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address"
+              placeholder="Access ID"
               required
               disabled={isLoading}
-              className="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white/5 text-white placeholder-gray-400 border border-white/10 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400/50 focus:border-lime-400/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm hover:bg-white/10 text-sm tracking-wide"
             />
           </div>
 
           {authMode !== 'forgotPassword' && (
-            <div className="relative mb-6">
-              <label htmlFor="password" className="sr-only">Password</label>
+            <div className="relative">
+              <label htmlFor="password" className="sr-only">Security Key</label>
               <input
                 id="password"
                 type={isPasswordVisible ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder="Security Key"
                 required
                 disabled={isLoading}
-                className="w-full bg-gray-900/50 text-white placeholder-gray-500 border border-gray-700 rounded-md py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400 focus:border-lime-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed pr-10"
+                className="w-full bg-white/5 text-white placeholder-gray-400 border border-white/10 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-lime-400/50 focus:border-lime-400/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed pr-10 backdrop-blur-sm hover:bg-white/10 text-sm tracking-wide"
               />
               <button
                 type="button"
                 onClick={() => setIsPasswordVisible(!isPasswordVisible)}
                 disabled={isLoading}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-lime-400 focus:outline-none focus:text-lime-400 transition-colors disabled:opacity-50"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-lime-400 focus:outline-none focus:text-lime-400 transition-colors disabled:opacity-50"
                 aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
               >
                 {isPasswordVisible ? (
@@ -188,42 +189,42 @@ export const AuthPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-lime-400 text-black font-bold py-3 px-4 rounded-md hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 animate-subtle-glow disabled:bg-lime-400/50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-100"
+            className="w-full mt-2 bg-lime-400 text-black font-bold py-3 px-4 rounded-lg hover:bg-lime-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-lime-400 transition-all duration-300 shadow-[0_0_15px_rgba(184,251,60,0.3)] hover:shadow-[0_0_25px_rgba(184,251,60,0.6)] disabled:bg-lime-400/50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] tracking-wider"
           >
             {getButtonText()}
           </button>
         </form>
 
-        <div className="text-center mt-6">
+        <div className="text-center mt-6 space-y-2">
           {authMode === 'login' ? (
             <>
               <button
                 onClick={() => { setAuthMode('forgotPassword'); setError(null); setMessage(null); }}
-                className="text-sm text-gray-400 hover:text-lime-400 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50"
+                className="text-xs text-gray-400 hover:text-lime-400 transition-colors duration-200 disabled:opacity-50 uppercase tracking-wider"
                 disabled={isLoading}
               >
-                Forgot Password?
+                Lost Credentials?
               </button>
-              <p className="text-sm text-gray-500 mt-2">
-                Don't have an account?{' '}
+              <p className="text-xs text-gray-500">
+                UNREGISTERED?{' '}
                 <button
                   onClick={() => { setAuthMode('signup'); setError(null); setMessage(null); }}
-                  className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50"
+                  className="font-semibold text-lime-400 hover:text-lime-300 transition-colors duration-200 disabled:opacity-50 ml-1 uppercase tracking-wider"
                   disabled={isLoading}
                 >
-                  Sign up
+                  Register New Agent
                 </button>
               </p>
             </>
           ) : (
-            <p className="text-sm text-gray-500">
-              Remember your password?{' '}
+            <p className="text-xs text-gray-500">
+              Have Credentials?{' '}
               <button
                 onClick={() => { setAuthMode('login'); setError(null); setMessage(null); }}
-                className="font-semibold text-lime-400 hover:text-lime-300 transition-all duration-200 transform hover:-translate-y-px disabled:opacity-50"
+                className="font-semibold text-lime-400 hover:text-lime-300 transition-colors duration-200 disabled:opacity-50 ml-1 uppercase tracking-wider"
                 disabled={isLoading}
               >
-                Log In
+                Access Existing Node
               </button>
             </p>
           )}

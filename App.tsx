@@ -14,6 +14,7 @@ import { Controls } from './components/Controls';
 import { Footer } from './components/Footer';
 import { playStopSound } from './utils/audioCues';
 import { SystemCoreTransition } from './components/SystemCoreTransition';
+import Particles from './components/Particles';
 
 type PostAuthState = 'initial' | 'showingPass' | 'bootingSequence' | 'showingOrb';
 
@@ -119,7 +120,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <main className="h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-black text-white">
+    <main className="h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-black text-white font-jarvis">
       {isAuthenticated ? (
         <>
           {postAuthState === 'showingPass' && (
@@ -182,13 +183,22 @@ const App: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="w-full h-full flex items-center justify-center">
-            <div id="particle-container">
-              {Array.from({ length: 30 }).map((_, i) => (
-                <span key={i} className="particle" />
-              ))}
+        <div className="w-full h-full flex items-center justify-center relative">
+            {/* Background Particles Effect - Black background with White Particles */}
+            <div className="absolute inset-0 z-0 bg-black">
+                 <Particles
+                    particleColors={['#ffffff', '#ffffff']}
+                    particleCount={200}
+                    particleSpread={10}
+                    speed={0.1}
+                    particleBaseSize={100}
+                    moveParticlesOnHover={true}
+                    alphaParticles={false}
+                    disableRotation={false}
+                 />
             </div>
-            <div className="relative">
+            {/* Login Content */}
+            <div className="relative z-10 w-full flex items-center justify-center px-4">
               <AuthPage />
             </div>
         </div>
